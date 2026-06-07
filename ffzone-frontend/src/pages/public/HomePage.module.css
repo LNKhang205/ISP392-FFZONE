@@ -1,0 +1,66 @@
+/* HERO */
+.hero{background:linear-gradient(135deg,#052e16 0%,#14532d 50%,#166534 100%);color:#fff;padding:80px 0;overflow:hidden}
+.heroInner{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
+.heroText{display:flex;flex-direction:column;gap:20px}
+.heroBadge{font-size:13px;width:fit-content}
+.heroText h1{font-size:52px;font-weight:800;line-height:1.1;letter-spacing:-1px}
+.heroText h1 span{color:#4ade80}
+.heroText p{font-size:17px;color:rgba(255,255,255,.8);line-height:1.7;max-width:460px}
+.heroSearch{display:flex;gap:12px;align-items:stretch;margin-top:8px}
+.searchBox{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.25);border-radius:var(--radius);padding:0 16px;flex:1;backdrop-filter:blur(8px)}
+.searchBox input{background:transparent;border:none;outline:none;color:#fff;font-size:15px;flex:1;padding:14px 0}
+.searchBox input::placeholder{color:rgba(255,255,255,.6)}
+.searchBox input::-webkit-calendar-picker-indicator{filter:invert(1);cursor:pointer}
+.heroVisual{border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-lg);aspect-ratio:4/3}
+.heroVisual img{width:100%;height:100%;object-fit:cover}
+
+/* STATS */
+.stats{background:#fff;border-bottom:1px solid var(--gray-100)}
+.statsGrid{display:grid;grid-template-columns:repeat(4,1fr);padding:32px 0}
+.statItem{display:flex;flex-direction:column;align-items:center;gap:4px;padding:20px;border-right:1px solid var(--gray-100)}
+.statItem:last-child{border-right:none}
+.statIcon{font-size:28px}
+.statItem strong{font-size:28px;font-weight:800;color:var(--green)}
+.statItem span{font-size:14px;color:var(--gray-500)}
+
+/* SECTION */
+.section{padding:72px 0}
+.sectionHeader{display:flex;justify-content:space-between;align-items:center;margin-bottom:36px}
+.sectionHeader h2{font-size:28px;font-weight:700}
+.fieldsGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;cursor:pointer}
+.fieldImg{position:relative;aspect-ratio:16/9;overflow:hidden}
+.fieldImg img{width:100%;height:100%;object-fit:cover;transition:transform .3s}
+.card:hover .fieldImg img{transform:scale(1.04)}
+.fieldBadge{position:absolute;top:12px;left:12px}
+.fieldInfo{padding:20px}
+.fieldInfo h3{font-size:17px;font-weight:700;margin-bottom:6px}
+.fieldInfo p{font-size:14px;color:var(--gray-500);line-height:1.6;margin-bottom:16px}
+.fieldFooter{display:flex;justify-content:space-between;align-items:center}
+.fieldStatus{font-size:13px;color:var(--green);font-weight:500}
+
+/* SKELETON */
+.loadingGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.skeleton{height:280px;background:linear-gradient(90deg,var(--gray-100) 25%,var(--gray-200) 50%,var(--gray-100) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:var(--radius)}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* HOW IT WORKS */
+.howSection{padding:72px 0;background:var(--gray-50)}
+.centerTitle{font-size:28px;font-weight:700;text-align:center;margin-bottom:48px}
+.stepsGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
+.step{background:#fff;border-radius:var(--radius);padding:28px 24px;text-align:center;box-shadow:var(--shadow-sm)}
+.stepNum{width:48px;height:48px;background:var(--green);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;margin:0 auto 16px}
+.step h4{font-size:16px;font-weight:700;margin-bottom:8px}
+.step p{font-size:14px;color:var(--gray-500);line-height:1.6}
+
+/* CTA */
+.cta{padding:72px 0}
+.ctaBox{background:linear-gradient(135deg,var(--green) 0%,#064e3b 100%);border-radius:20px;padding:64px;text-align:center;color:#fff}
+.ctaBox h2{font-size:36px;font-weight:800;margin-bottom:12px}
+.ctaBox p{font-size:17px;color:rgba(255,255,255,.8);margin-bottom:32px}
+.ctaBtns{display:flex;gap:16px;justify-content:center}
+
+@media(max-width:768px){
+  .heroInner{grid-template-columns:1fr}.heroVisual{display:none}
+  .heroText h1{font-size:36px}.statsGrid{grid-template-columns:repeat(2,1fr)}
+  .fieldsGrid,.stepsGrid{grid-template-columns:1fr}.heroSearch{flex-direction:column}
+}

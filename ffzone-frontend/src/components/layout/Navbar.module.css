@@ -1,0 +1,11 @@
+.nav{background:#fff;border-bottom:1px solid var(--gray-200);position:sticky;top:0;z-index:100;box-shadow:var(--shadow-sm)}
+.inner{display:flex;align-items:center;height:64px;gap:32px}
+.logo{display:flex;align-items:center;gap:8px;font-size:20px;font-weight:700;color:var(--gray-800)}
+.logo strong{color:var(--green)}
+.logoIcon{font-size:22px}
+.links{display:flex;gap:4px;flex:1}
+.link{padding:8px 12px;border-radius:var(--radius-sm);font-size:14px;font-weight:500;color:var(--gray-600);transition:all .2s}
+.link:hover{color:var(--green);background:var(--green-light)}
+.actions{display:flex;align-items:center;gap:12px}
+.userMenu{display:flex;align-items:center;gap:12px}
+.userName{font-size:14px;font-weight:500;color:var(--gray-600)}

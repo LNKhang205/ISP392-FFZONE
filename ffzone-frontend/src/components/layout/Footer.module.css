@@ -1,0 +1,10 @@
+.footer{background:var(--gray-800);color:#e2e8f0;margin-top:80px}
+.inner{display:grid;grid-template-columns:2fr 1fr 1fr;gap:48px;padding:48px 0 32px}
+.brand span{font-size:20px;font-weight:700;color:#fff}
+.brand strong{color:#4ade80}
+.brand p{margin-top:8px;font-size:14px;color:var(--gray-400);line-height:1.7}
+.col{display:flex;flex-direction:column;gap:10px}
+.col h4{font-size:14px;font-weight:600;color:#fff;margin-bottom:4px}
+.col a,.col span{font-size:14px;color:var(--gray-400);transition:color .2s}
+.col a:hover{color:#4ade80}
+.bottom{border-top:1px solid #334155;padding:16px 0;font-size:13px;color:var(--gray-400)}
