@@ -1,0 +1,177 @@
+/* ── Layout ── */
+.root {
+  min-height: 100vh;
+  background: #f9fafb;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Topbar ── */
+.topbar {
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0 24px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 1px 4px rgba(0,0,0,.04);
+}
+
+.topbarLeft { display: flex; align-items: center; gap: 12px; }
+.logo { font-size: 1.2rem; font-weight: 600; color: #111; }
+.roleTag {
+  padding: 2px 10px;
+  background: #fef9c3;
+  color: #854d0e;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.topbarRight { display: flex; align-items: center; gap: 10px; }
+.welcome { font-size: 0.875rem; color: #374151; }
+
+.btnOutline {
+  padding: 6px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: #374151;
+}
+.btnOutline:hover { background: #f3f4f6; }
+
+.btnLogout {
+  padding: 6px 14px;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: #dc2626;
+}
+.btnLogout:hover { background: #fee2e2; }
+
+/* ── Body ── */
+.body { padding: 24px; max-width: 1100px; margin: 0 auto; width: 100%; }
+
+.pageHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.pageHeader h1 { margin: 0; font-size: 1.4rem; font-weight: 600; color: #111; }
+
+/* ── Period tabs ── */
+.periodTabs { display: flex; gap: 4px; margin-left: auto; }
+.periodTab {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: #374151;
+}
+.periodActive {
+  background: #1e293b;
+  color: #fff;
+  border-color: #1e293b;
+}
+
+/* ── Stats grid ── */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.statCard {
+  background: #fff;
+  border-radius: 10px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  border-top-width: 3px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+.statValue {
+  font-size: 1.8rem;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.statLabel {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+.statSub {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-top: 4px;
+}
+
+/* ── Section ── */
+.section {
+  background: #fff;
+  border-radius: 10px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  margin-bottom: 20px;
+}
+.section h2 { margin: 0 0 16px; font-size: 1rem; font-weight: 600; color: #111; }
+
+.hint { color: #6b7280; font-size: 0.875rem; margin-bottom: 12px; }
+
+/* ── Table ── */
+.tableWrap { overflow-x: auto; }
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.table th {
+  text-align: left;
+  padding: 10px 12px;
+  color: #6b7280;
+  font-weight: 500;
+  font-size: 0.8rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+.table td {
+  padding: 11px 12px;
+  color: #374151;
+  border-bottom: 1px solid #f1f5f9;
+}
+.table tr:last-child td { border-bottom: none; }
+.monoId { font-family: monospace; color: #9ca3af; font-size: 0.8rem; }
+
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.btnPrimary {
+  padding: 9px 20px;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.btnPrimary:hover { background: #2563eb; }
+
+.loading { color: #6b7280; padding: 32px 0; }
+.empty   { color: #6b7280; font-size: 0.875rem; }
