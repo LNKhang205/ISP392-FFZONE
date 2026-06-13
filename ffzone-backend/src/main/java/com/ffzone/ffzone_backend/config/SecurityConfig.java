@@ -33,12 +33,15 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 // ── Public (không cần login) ──
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/fields/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/field-images/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/field-slots/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/services/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/vouchers/available").permitAll()
+                .requestMatchers("/uploads/**").permitAll()
 
                 // ── IT_ADMIN only ──
                 .requestMatchers("/api/accounts/**").hasRole("IT_ADMIN")
@@ -48,6 +51,9 @@ public class SecurityConfig {
                 .requestMatchers("/api/field-pricings/**").hasRole("IT_ADMIN")
 
                 // ── IT_ADMIN hoặc OWNER ──
+                .requestMatchers(HttpMethod.POST,   "/api/field-images/**").hasAnyRole("IT_ADMIN", "OWNER")
+                .requestMatchers(HttpMethod.PUT,    "/api/field-images/**").hasAnyRole("IT_ADMIN", "OWNER")
+                .requestMatchers(HttpMethod.DELETE, "/api/field-images/**").hasAnyRole("IT_ADMIN", "OWNER")
                 .requestMatchers("/api/vouchers/**").hasAnyRole("IT_ADMIN", "OWNER")
 
                 // ── Còn lại phải login ──
@@ -61,7 +67,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
+        config.setAllowedOriginPatterns(List.of("http://localhost:*", "http://127.0.0.1:*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

@@ -3,8 +3,15 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '../../services/api'
 import styles from './FieldListPage.module.css'
 
-const TYPE_LABEL = { '5V5':'Sân 5 người','7V7':'Sân 7 người','11V11':'Sân 11 người' }
-const IMG = 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=600&q=80'
+const TYPE_LABEL = { '5V5':'Sân 5 người','7V7':'Sân 7 người','9V9':'Sân 9 người' }
+const FALLBACK = 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=600&q=80'
+const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8080'
+
+function getImageUrl(thumbnailUrl) {
+  if (!thumbnailUrl) return FALLBACK
+  if (thumbnailUrl.startsWith('http')) return thumbnailUrl
+  return `${API_BASE}/${thumbnailUrl}`
+}
 
 export default function FieldListPage() {
   const [fields, setFields] = useState([])
@@ -35,14 +42,18 @@ export default function FieldListPage() {
             {fields.map(field => (
               <div key={field.id} className={`card ${styles.fieldCard}`} onClick={() => navigate(`/fields/${field.id}?date=${date}`)}>
                 <div className={styles.img}>
-                  <img src={IMG} alt={field.name} />
+                  <img
+                    src={getImageUrl(field.thumbnailUrl)}
+                    alt={field.name}
+                    onError={e => { e.target.src = FALLBACK }}
+                  />
                   <span className={`badge badge-green ${styles.badge}`}>{TYPE_LABEL[field.type]||field.type}</span>
                 </div>
                 <div className={styles.info}>
                   <h3>{field.name}</h3>
                   <p>{field.description || 'Sân cỏ nhân tạo chất lượng cao'}</p>
                   <div className={styles.footer}>
-                    <span>📍 Tầng 1</span>
+                    <span>📍 FFZone</span>
                     <button className="btn btn-primary btn-sm">Xem lịch</button>
                   </div>
                 </div>

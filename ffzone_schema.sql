@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS fields (
     id          UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
     code        VARCHAR(20)  NOT NULL,
     name        VARCHAR(100) NOT NULL,
-    type        VARCHAR(10)  NOT NULL DEFAULT '5V5' CHECK (type IN ('5V5', '7V7', '11V11')),
+    type        VARCHAR(10)  NOT NULL DEFAULT '5V5' CHECK (type IN ('5V5', '7V7', '9V9')),
     description TEXT,
     status      field_status NOT NULL DEFAULT 'ACTIVE',
     created_at  TIMESTAMP    NOT NULL DEFAULT NOW(),
@@ -425,7 +425,7 @@ ON CONFLICT (email) DO NOTHING;
 INSERT INTO fields (code, name, type, description, status) VALUES
     ('FIELD-A', 'Sân A', '5V5',   'Sân cỏ nhân tạo 5v5, có mái che, đèn LED', 'ACTIVE'),
     ('FIELD-B', 'Sân B', '7V7',   'Sân cỏ nhân tạo 7v7, ngoài trời',           'ACTIVE'),
-    ('FIELD-C', 'Sân C', '11V11', 'Sân cỏ tự nhiên 11v11, tiêu chuẩn FIFA',    'ACTIVE')
+    ('FIELD-C', 'Sân C', '9V9', 'Sân cỏ tự nhiên 9v9',                         'ACTIVE')
 ON CONFLICT (code) DO NOTHING;
 
 -- Giá cho Sân A — ngày thường
@@ -527,4 +527,3 @@ BEGIN
     RAISE NOTICE '  Vouchers   : %', cnt_vouchers;
     RAISE NOTICE '========================================';
 END $$;
-

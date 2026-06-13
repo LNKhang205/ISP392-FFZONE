@@ -1,0 +1,98 @@
+.page { padding: 40px 0 80px; }
+
+.breadcrumb { font-size: 14px; color: var(--gray-400); margin-bottom: 24px; }
+.breadLink { cursor: pointer; color: var(--green); }
+.breadLink:hover { text-decoration: underline; }
+
+.layout { display: grid; grid-template-columns: 1fr 380px; gap: 32px; align-items: start; }
+
+/* LEFT */
+.mainImg {
+  position: relative;
+  aspect-ratio: 16/9;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--gray-100);
+  margin-bottom: 12px;
+}
+.mainImg img { width: 100%; height: 100%; object-fit: cover; }
+.typeBadge { position: absolute; top: 16px; left: 16px; font-size: 13px; }
+
+.thumbs { display: flex; gap: 8px; margin-bottom: 24px; overflow-x: auto; }
+.thumb {
+  width: 80px; height: 56px; flex-shrink: 0;
+  border-radius: 8px; overflow: hidden; cursor: pointer;
+  border: 2px solid transparent; opacity: 0.65; transition: all .2s;
+}
+.thumb img { width: 100%; height: 100%; object-fit: cover; }
+.thumbActive { border-color: var(--green); opacity: 1; }
+.thumb:hover { opacity: 1; }
+
+.infoCard { background: #fff; border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow-sm); }
+.infoCard h1 { font-size: 26px; font-weight: 800; margin-bottom: 12px; }
+.meta { display: flex; gap: 16px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+.code { font-size: 14px; color: var(--gray-500); }
+.status { font-size: 14px; font-weight: 600; }
+.active { color: var(--green); }
+.inactive { color: #ef4444; }
+.desc { color: var(--gray-500); line-height: 1.7; margin-bottom: 20px; }
+
+.features { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.feature {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; color: var(--gray-600);
+  background: var(--gray-50); border-radius: 8px; padding: 10px 14px;
+}
+
+/* RIGHT */
+.bookingCard {
+  background: #fff; border-radius: var(--radius); padding: 28px;
+  box-shadow: var(--shadow-md); border: 1.5px solid var(--gray-100);
+  position: sticky; top: 80px;
+}
+.bookingCard h3 { font-size: 20px; font-weight: 700; margin-bottom: 20px; }
+
+.dateSelector { margin-bottom: 20px; }
+.dateSelector label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--gray-700); }
+.dateInput {
+  width: 100%; padding: 10px 14px; border: 1.5px solid var(--gray-200);
+  border-radius: 8px; font-size: 15px; outline: none;
+  transition: border-color .2s;
+}
+.dateInput:focus { border-color: var(--green); }
+
+.priceSection { margin-bottom: 20px; }
+.priceSection h4 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+.priceList { display: flex; flex-direction: column; gap: 8px; }
+.priceRow {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 14px; background: var(--gray-50);
+  border-radius: 8px; font-size: 14px;
+}
+.priceTime { color: var(--gray-600); }
+.priceAmount { font-weight: 700; color: var(--green); }
+.noPrice { font-size: 13px; color: var(--gray-400); font-style: italic; }
+
+.bookBtn { width: 100%; padding: 14px; font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+.bookBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.contact { border-top: 1px solid var(--gray-100); padding-top: 16px; }
+.contact p { font-size: 13px; color: var(--gray-500); margin-bottom: 6px; }
+.contact strong { color: var(--gray-700); }
+
+/* Skeleton */
+.skeleton {
+  height: 600px; background: linear-gradient(90deg,var(--gray-100) 25%,var(--gray-200) 50%,var(--gray-100) 75%);
+  background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: var(--radius);
+}
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+.notFound { text-align: center; padding: 80px 20px; }
+.notFound span { font-size: 72px; display: block; margin-bottom: 16px; }
+.notFound h2 { font-size: 22px; font-weight: 700; margin-bottom: 24px; color: var(--gray-600); }
+
+@media(max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .features { grid-template-columns: 1fr; }
+  .bookingCard { position: static; }
+}

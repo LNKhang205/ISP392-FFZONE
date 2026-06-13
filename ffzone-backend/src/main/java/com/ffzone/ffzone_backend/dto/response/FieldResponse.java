@@ -18,11 +18,20 @@ public class FieldResponse {
     private String description;
     private FieldStatus status;
     private LocalDateTime createdAt;
+    private String thumbnailUrl; // ảnh thumbnail, null nếu chưa có
 
     public static FieldResponse from(Field f) {
         return FieldResponse.builder()
             .id(f.getId()).code(f.getCode()).name(f.getName())
             .type(f.getType()).description(f.getDescription())
             .status(f.getStatus()).createdAt(f.getCreatedAt()).build();
+    }
+
+    public static FieldResponse from(Field f, String thumbnailUrl) {
+        return FieldResponse.builder()
+            .id(f.getId()).code(f.getCode()).name(f.getName())
+            .type(f.getType()).description(f.getDescription())
+            .status(f.getStatus()).createdAt(f.getCreatedAt())
+            .thumbnailUrl(thumbnailUrl).build();
     }
 }

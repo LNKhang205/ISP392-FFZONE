@@ -3,8 +3,10 @@ package com.ffzone.ffzone_backend.service;
 import com.ffzone.ffzone_backend.dto.request.FieldRequest;
 import com.ffzone.ffzone_backend.dto.response.FieldResponse;
 import com.ffzone.ffzone_backend.entity.Field;
+import com.ffzone.ffzone_backend.entity.FieldImage;
 import com.ffzone.ffzone_backend.enums.FieldStatus;
 import com.ffzone.ffzone_backend.exception.AppException;
+import com.ffzone.ffzone_backend.repository.FieldImageRepository;
 import com.ffzone.ffzone_backend.repository.FieldRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,17 +20,23 @@ import java.util.UUID;
 public class FieldService {
 
     private final FieldRepository fieldRepository;
+    private final FieldImageRepository fieldImageRepository;
 
     public List<FieldResponse> findAll() {
-        return fieldRepository.findAll().stream().map(FieldResponse::from).toList();
+        return fieldRepository.findAll().stream()
+            .map(f -> FieldResponse.from(f, getThumbnailUrl(f.getId())))
+            .toList();
     }
 
     public List<FieldResponse> findActive() {
-        return fieldRepository.findByStatus(FieldStatus.ACTIVE).stream().map(FieldResponse::from).toList();
+        return fieldRepository.findByStatus(FieldStatus.ACTIVE).stream()
+            .map(f -> FieldResponse.from(f, getThumbnailUrl(f.getId())))
+            .toList();
     }
 
     public FieldResponse findById(UUID id) {
-        return FieldResponse.from(getOrThrow(id));
+        Field f = getOrThrow(id);
+        return FieldResponse.from(f, getThumbnailUrl(id));
     }
 
     @Transactional
@@ -43,7 +51,8 @@ public class FieldService {
             .description(req.getDescription())
             .status(req.getStatus() != null ? req.getStatus() : FieldStatus.ACTIVE)
             .build();
-        return FieldResponse.from(fieldRepository.save(field));
+        Field saved = fieldRepository.save(field);
+        return FieldResponse.from(saved, null);
     }
 
     @Transactional
@@ -53,7 +62,8 @@ public class FieldService {
         if (req.getType() != null) field.setType(req.getType());
         if (req.getDescription() != null) field.setDescription(req.getDescription());
         if (req.getStatus() != null) field.setStatus(req.getStatus());
-        return FieldResponse.from(fieldRepository.save(field));
+        Field saved = fieldRepository.save(field);
+        return FieldResponse.from(saved, getThumbnailUrl(id));
     }
 
     @Transactional
@@ -65,5 +75,14 @@ public class FieldService {
     public Field getOrThrow(UUID id) {
         return fieldRepository.findById(id)
             .orElseThrow(() -> AppException.notFound("Sân không tồn tại: " + id));
+    }
+
+    /** Trả về URL của ảnh thumbnail (relative path), null nếu chưa có ảnh */
+    private String getThumbnailUrl(UUID fieldId) {
+        List<FieldImage> thumbs = fieldImageRepository.findByFieldIdAndIsThumbnail(fieldId, true);
+        if (!thumbs.isEmpty()) return thumbs.get(0).getImageUrl();
+        // fallback: lấy ảnh đầu tiên nếu không có thumbnail
+        List<FieldImage> all = fieldImageRepository.findByFieldId(fieldId);
+        return all.isEmpty() ? null : all.get(0).getImageUrl();
     }
 }

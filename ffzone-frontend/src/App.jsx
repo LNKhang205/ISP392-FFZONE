@@ -4,6 +4,7 @@ import Navbar from './components/layout/Navbar'
 import Footer from './components/layout/Footer'
 import HomePage from './pages/public/HomePage'
 import FieldListPage from './pages/public/FieldListPage'
+import FieldDetailPage from './pages/public/FieldDetailPage'
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
 import NotFoundPage from './pages/public/NotFoundPage'
@@ -11,7 +12,6 @@ import StaffDashboard from './pages/staff/StaffDashboard'
 import OwnerDashboard from './pages/owner/OwnerDashboard'
 import AdminDashboard from './pages/admin/AdminDashboard'
 
-// Bảo vệ route: phải đăng nhập
 function RequireAuth({ children }) {
   const { isLoggedIn } = useAuth()
   const location = useLocation()
@@ -19,7 +19,6 @@ function RequireAuth({ children }) {
   return children
 }
 
-// Bảo vệ route theo role cụ thể
 function RequireRole({ children, roles }) {
   const { user, isLoggedIn } = useAuth()
   const location = useLocation()
@@ -28,7 +27,6 @@ function RequireRole({ children, roles }) {
   return children
 }
 
-// Layout wrapper: ẩn Navbar/Footer cho các trang admin/staff/owner
 function PublicLayout({ children }) {
   return (
     <>
@@ -42,27 +40,28 @@ function PublicLayout({ children }) {
 export default function App() {
   return (
     <Routes>
-      {/* Public routes - có Navbar/Footer */}
+      {/* Public routes */}
       <Route path="/" element={<PublicLayout><HomePage /></PublicLayout>} />
       <Route path="/fields" element={<PublicLayout><FieldListPage /></PublicLayout>} />
+      <Route path="/fields/:id" element={<PublicLayout><FieldDetailPage /></PublicLayout>} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
 
-      {/* Staff dashboard - layout riêng */}
+      {/* Staff dashboard */}
       <Route path="/staff/*" element={
         <RequireRole roles={['STAFF']}>
           <StaffDashboard />
         </RequireRole>
       } />
 
-      {/* Owner dashboard - layout riêng */}
+      {/* Owner dashboard */}
       <Route path="/owner/*" element={
         <RequireRole roles={['OWNER']}>
           <OwnerDashboard />
         </RequireRole>
       } />
 
-      {/* IT Admin dashboard - layout riêng */}
+      {/* IT Admin dashboard */}
       <Route path="/admin/*" element={
         <RequireRole roles={['IT_ADMIN']}>
           <AdminDashboard />

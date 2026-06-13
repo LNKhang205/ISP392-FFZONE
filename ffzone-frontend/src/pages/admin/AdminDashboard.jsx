@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Routes, Route, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../services/api'
 import styles from './AdminDashboard.module.css'
+import FieldManagement from './FieldManagement'
 
 /* ── Sidebar ── */
 function Sidebar({ onLogout }) {
@@ -186,89 +187,89 @@ function AccountManagement() {
 }
 
 /* ── Field Management ── */
-function FieldManagement() {
-  const [fields, setFields] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState({ name: '', address: '', fieldType: 'FIELD_5', description: '' })
-  const [editing, setEditing] = useState(null)
-  const [msg, setMsg] = useState('')
+// function FieldManagement() {
+//   const [fields, setFields] = useState([])
+//   const [loading, setLoading] = useState(true)
+//   const [form, setForm] = useState({ name: '', address: '', fieldType: 'FIELD_5', description: '' })
+//   const [editing, setEditing] = useState(null)
+//   const [msg, setMsg] = useState('')
 
-  const load = () => {
-    setLoading(true)
-    api.get('/fields').then(r => setFields(r.data)).catch(() => {}).finally(() => setLoading(false))
-  }
-  useEffect(load, [])
+//   const load = () => {
+//     setLoading(true)
+//     api.get('/fields').then(r => setFields(r.data)).catch(() => {}).finally(() => setLoading(false))
+//   }
+//   useEffect(load, [])
 
-  const save = async () => {
-    setMsg('')
-    try {
-      if (editing) {
-        await api.put(`/fields/${editing.id}`, form)
-        setEditing(null)
-        setMsg('✅ Đã cập nhật sân')
-      } else {
-        await api.post('/fields', form)
-        setMsg('✅ Đã thêm sân mới')
-      }
-      setForm({ name: '', address: '', fieldType: 'FIELD_5', description: '' })
-      load()
-    } catch (e) { setMsg('❌ ' + (e.response?.data?.message || 'Lỗi')) }
-  }
+//   const save = async () => {
+//     setMsg('')
+//     try {
+//       if (editing) {
+//         await api.put(`/fields/${editing.id}`, form)
+//         setEditing(null)
+//         setMsg('✅ Đã cập nhật sân')
+//       } else {
+//         await api.post('/fields', form)
+//         setMsg('✅ Đã thêm sân mới')
+//       }
+//       setForm({ name: '', address: '', fieldType: 'FIELD_5', description: '' })
+//       load()
+//     } catch (e) { setMsg('❌ ' + (e.response?.data?.message || 'Lỗi')) }
+//   }
 
-  const startEdit = (f) => {
-    setEditing(f)
-    setForm({ name: f.name, address: f.address, fieldType: f.fieldType, description: f.description })
-  }
+//   const startEdit = (f) => {
+//     setEditing(f)
+//     setForm({ name: f.name, address: f.address, fieldType: f.fieldType, description: f.description })
+//   }
 
-  const del = async (f) => {
-    if (!window.confirm(`Xóa sân "${f.name}"?`)) return
-    try { await api.delete(`/fields/${f.id}`); load() }
-    catch (e) { alert('Không thể xóa: ' + (e.response?.data?.message || 'Lỗi')) }
-  }
+//   const del = async (f) => {
+//     if (!window.confirm(`Xóa sân "${f.name}"?`)) return
+//     try { await api.delete(`/fields/${f.id}`); load() }
+//     catch (e) { alert('Không thể xóa: ' + (e.response?.data?.message || 'Lỗi')) }
+//   }
 
-  const columns = [
-    { key: 'name', label: 'Tên sân' },
-    { key: 'fieldType', label: 'Loại' },
-    { key: 'address', label: 'Địa chỉ' },
-    { key: 'status', label: 'Trạng thái' },
-  ]
+//   const columns = [
+//     { key: 'name', label: 'Tên sân' },
+//     { key: 'fieldType', label: 'Loại' },
+//     { key: 'address', label: 'Địa chỉ' },
+//     { key: 'status', label: 'Trạng thái' },
+//   ]
 
-  return (
-    <div className={styles.page}>
-      <h1>Quản lý sân bóng</h1>
-      <div className={styles.card}>
-        <h2>{editing ? `Sửa sân: ${editing.name}` : 'Thêm sân mới'}</h2>
-        <div className={styles.formGrid}>
-          <input className={styles.input} placeholder="Tên sân" value={form.name}
-            onChange={e => setForm(f => ({...f, name: e.target.value}))} />
-          <input className={styles.input} placeholder="Địa chỉ" value={form.address}
-            onChange={e => setForm(f => ({...f, address: e.target.value}))} />
-          <select className={styles.select} value={form.fieldType}
-            onChange={e => setForm(f => ({...f, fieldType: e.target.value}))}>
-            <option value="FIELD_5">Sân 5</option>
-            <option value="FIELD_7">Sân 7</option>
-            <option value="FIELD_11">Sân 11</option>
-          </select>
-          <input className={styles.input} placeholder="Mô tả" value={form.description}
-            onChange={e => setForm(f => ({...f, description: e.target.value}))} />
-        </div>
-        <div className={styles.formActions}>
-          <button onClick={save} className={styles.btnPrimary}>
-            {editing ? '💾 Lưu thay đổi' : '+ Thêm sân'}
-          </button>
-          {editing && (
-            <button onClick={() => { setEditing(null); setForm({ name:'',address:'',fieldType:'FIELD_5',description:'' }) }}
-              className={styles.btnCancel}>Hủy</button>
-          )}
-        </div>
-        {msg && <p className={styles.msg}>{msg}</p>}
-      </div>
-      {loading ? <p className={styles.loading}>Đang tải...</p> : (
-        <CrudTable columns={columns} rows={fields} onEdit={startEdit} onDelete={del} />
-      )}
-    </div>
-  )
-}
+//   return (
+//     <div className={styles.page}>
+//       <h1>Quản lý sân bóng</h1>
+//       <div className={styles.card}>
+//         <h2>{editing ? `Sửa sân: ${editing.name}` : 'Thêm sân mới'}</h2>
+//         <div className={styles.formGrid}>
+//           <input className={styles.input} placeholder="Tên sân" value={form.name}
+//             onChange={e => setForm(f => ({...f, name: e.target.value}))} />
+//           <input className={styles.input} placeholder="Địa chỉ" value={form.address}
+//             onChange={e => setForm(f => ({...f, address: e.target.value}))} />
+//           <select className={styles.select} value={form.fieldType}
+//             onChange={e => setForm(f => ({...f, fieldType: e.target.value}))}>
+//             <option value="FIELD_5">Sân 5</option>
+//             <option value="FIELD_7">Sân 7</option>
+//             <option value="FIELD_9">Sân 9</option>
+//           </select>
+//           <input className={styles.input} placeholder="Mô tả" value={form.description}
+//             onChange={e => setForm(f => ({...f, description: e.target.value}))} />
+//         </div>
+//         <div className={styles.formActions}>
+//           <button onClick={save} className={styles.btnPrimary}>
+//             {editing ? '💾 Lưu thay đổi' : '+ Thêm sân'}
+//           </button>
+//           {editing && (
+//             <button onClick={() => { setEditing(null); setForm({ name:'',address:'',fieldType:'FIELD_5',description:'' }) }}
+//               className={styles.btnCancel}>Hủy</button>
+//           )}
+//         </div>
+//         {msg && <p className={styles.msg}>{msg}</p>}
+//       </div>
+//       {loading ? <p className={styles.loading}>Đang tải...</p> : (
+//         <CrudTable columns={columns} rows={fields} onEdit={startEdit} onDelete={del} />
+//       )}
+//     </div>
+//   )
+// }
 
 /* ── Pricing Management ── */
 function PricingManagement() {

@@ -3,8 +3,15 @@ import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import styles from './HomePage.module.css'
 
-const FIELD_TYPE_LABEL = { '5V5': 'Sân 5 người', '7V7': 'Sân 7 người', '11V11': 'Sân 11 người' }
+const FIELD_TYPE_LABEL = { '5V5': 'Sân 5 người', '7V7': 'Sân 7 người', '9V9': 'Sân 9 người' }
 const FIELD_IMG_FALLBACK = 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=600&q=80'
+const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8080'
+
+function getImageUrl(thumbnailUrl) {
+  if (!thumbnailUrl) return FIELD_IMG_FALLBACK
+  if (thumbnailUrl.startsWith('http')) return thumbnailUrl
+  return `${API_BASE}/${thumbnailUrl}`
+}
 
 export default function HomePage() {
   const [fields, setFields] = useState([])
@@ -86,7 +93,11 @@ export default function HomePage() {
               {fields.slice(0,3).map(field => (
                 <div key={field.id} className="card" onClick={() => navigate(`/fields/${field.id}`)}>
                   <div className={styles.fieldImg}>
-                    <img src={FIELD_IMG_FALLBACK} alt={field.name} />
+                    <img
+                      src={getImageUrl(field.thumbnailUrl)}
+                      alt={field.name}
+                      onError={e => { e.target.src = FIELD_IMG_FALLBACK }}
+                    />
                     <span className={`badge badge-green ${styles.fieldBadge}`}>{FIELD_TYPE_LABEL[field.type] || field.type}</span>
                   </div>
                   <div className={styles.fieldInfo}>
