@@ -4,6 +4,8 @@ import com.ffzone.ffzone_backend.enums.ServiceType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -11,7 +13,11 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "services")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Service {
 
     @Id
@@ -21,6 +27,7 @@ public class Service {
     @Column(nullable = false, length = 100)
     private String name;
 
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Enumerated(EnumType.STRING)
     @Column(name = "service_type", nullable = false, length = 20, unique = true)
     private ServiceType serviceType;

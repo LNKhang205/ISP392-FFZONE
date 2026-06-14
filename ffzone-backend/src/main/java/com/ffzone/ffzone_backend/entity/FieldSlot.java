@@ -4,7 +4,9 @@ import com.ffzone.ffzone_backend.enums.SlotStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -12,9 +14,13 @@ import java.time.LocalTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "field_slots",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"field_id","slot_date","start_time"}))
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Table(name = "field_slots", uniqueConstraints = @UniqueConstraint(columnNames = { "field_id", "slot_date",
+        "start_time" }))
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class FieldSlot {
 
     @Id
@@ -34,6 +40,7 @@ public class FieldSlot {
     @Column(name = "end_time", nullable = false)
     private LocalTime endTime;
 
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
@@ -42,7 +49,7 @@ public class FieldSlot {
     @Version
     @Column(nullable = false)
     @Builder.Default
-    private Integer version = 0;        // Optimistic Locking
+    private Integer version = 0; // Optimistic Locking
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

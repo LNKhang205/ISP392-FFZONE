@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
+@Transactional(readOnly = true)
 @org.springframework.stereotype.Service
 @RequiredArgsConstructor
 public class ServiceService {
