@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,6 +22,7 @@ public class FieldService {
 
     private final FieldRepository fieldRepository;
     private final FieldImageRepository fieldImageRepository;
+    private final FieldSlotService fieldSlotService;
 
     public List<FieldResponse> findAll() {
         return fieldRepository.findAll().stream()
@@ -52,6 +54,12 @@ public class FieldService {
             .status(req.getStatus() != null ? req.getStatus() : FieldStatus.ACTIVE)
             .build();
         Field saved = fieldRepository.save(field);
+
+        // Auto-generate slots cho 7 ngày tới ngay khi tạo sân mới
+        LocalDate today = java.time.LocalDate.now();
+        for (int i = 0; i < 7; i++)
+            fieldSlotService.generateSlotsForField(saved, today.plusDays(i));
+
         return FieldResponse.from(saved, null);
     }
 

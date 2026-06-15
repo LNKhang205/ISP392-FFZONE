@@ -39,6 +39,13 @@ public class FieldSlotController {
         return ResponseEntity.ok(slotService.findAvailableByFieldAndDate(fieldId, date));
     }
 
+    // GET /api/field-slots/date?date=2026-06-13  → tất cả slots của mọi sân trong ngày
+    @GetMapping("/date")
+    public ResponseEntity<List<FieldSlotResponse>> getAllByDate(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity.ok(slotService.findAllByDate(date));
+    }
+
     // GET /api/field-slots/field/{fieldId}/range?from=2026-06-05&to=2026-06-11
     @GetMapping("/field/{fieldId}/range")
     public ResponseEntity<List<FieldSlotResponse>> getByRange(

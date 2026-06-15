@@ -105,7 +105,10 @@ export default function HomePage() {
                     <p>{field.description || 'Sân cỏ nhân tạo chất lượng cao'}</p>
                     <div className={styles.fieldFooter}>
                       <span className={styles.fieldStatus}>🟢 Đang hoạt động</span>
-                      <button className="btn btn-primary btn-sm">Đặt ngay</button>
+                      <button
+                        className="btn btn-primary btn-sm"
+                        onClick={e => { e.stopPropagation(); navigate(`/booking?fieldId=${field.id}`) }}
+                      >Đặt ngay</button>
                     </div>
                   </div>
                 </div>

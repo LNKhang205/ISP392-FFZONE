@@ -8,6 +8,7 @@ import FieldDetailPage from './pages/public/FieldDetailPage'
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
 import NotFoundPage from './pages/public/NotFoundPage'
+import BookingPage from './pages/public/BookingPage'
 import StaffDashboard from './pages/staff/StaffDashboard'
 import OwnerDashboard from './pages/owner/OwnerDashboard'
 import AdminDashboard from './pages/admin/AdminDashboard'
@@ -44,6 +45,7 @@ export default function App() {
       <Route path="/" element={<PublicLayout><HomePage /></PublicLayout>} />
       <Route path="/fields" element={<PublicLayout><FieldListPage /></PublicLayout>} />
       <Route path="/fields/:id" element={<PublicLayout><FieldDetailPage /></PublicLayout>} />
+      <Route path="/booking" element={<PublicLayout><BookingPage /></PublicLayout>} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
 

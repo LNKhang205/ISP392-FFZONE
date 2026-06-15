@@ -45,6 +45,14 @@ public class FieldPricing {
     @Builder.Default
     private Boolean isActive = true;
 
+    /**
+     * Chỉ có giá trị khi dayOfWeek = HOLIDAY.
+     * Ví dụ: "Tết Nguyên Đán", "Quốc khánh 2/9".
+     * Lưu vào DB để admin có thể xem và xóa theo tên dịp lễ.
+     */
+    @Column(name = "holiday_name", length = 100)
+    private String holidayName;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

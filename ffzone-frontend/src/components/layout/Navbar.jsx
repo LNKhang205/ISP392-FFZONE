@@ -38,6 +38,7 @@ export default function Navbar() {
         <div className={styles.links}>
           <Link to="/" className={styles.link}>Trang chủ</Link>
           <Link to="/fields" className={styles.link}>Sân bóng</Link>
+          <Link to="/booking" className={styles.link}>Đặt sân</Link>
         </div>
 
         <div className={styles.actions}>

@@ -54,7 +54,10 @@ export default function FieldListPage() {
                   <p>{field.description || 'Sân cỏ nhân tạo chất lượng cao'}</p>
                   <div className={styles.footer}>
                     <span>📍 FFZone</span>
-                    <button className="btn btn-primary btn-sm">Xem lịch</button>
+                    <button
+                      className="btn btn-primary btn-sm"
+                      onClick={e => { e.stopPropagation(); navigate(`/booking?fieldId=${field.id}`) }}
+                    >Đặt ngay</button>
                   </div>
                 </div>
               </div>
