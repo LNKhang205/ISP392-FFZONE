@@ -82,8 +82,7 @@ export default function HomePage() {
         <div className="container">
           <div className={styles.sectionHeader}>
             <h2>Sân bóng đá</h2>
-            <a href="/fields" className="btn btn-outline">Xem tất cả →</a>
-          </div>
+            <a href="/fields" className="btn btn-outline">Xem tất cả →</a></div>
           {loading ? (
             <div className={styles.loadingGrid}>
               {[1,2,3].map(i => <div key={i} className={styles.skeleton} />)}
@@ -91,7 +90,7 @@ export default function HomePage() {
           ) : (
             <div className={styles.fieldsGrid}>
               {fields.slice(0,3).map(field => (
-                <div key={field.id} className="card" onClick={() => navigate(`/fields/${field.id}`)}>
+                <div key={field.id} className="card" onClick={() => navigate(`/fields`)}>
                   <div className={styles.fieldImg}>
                     <img
                       src={getImageUrl(field.thumbnailUrl)}

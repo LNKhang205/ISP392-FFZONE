@@ -54,7 +54,7 @@ export default function FieldListPage() {
                   <p>{field.description || 'Sân cỏ nhân tạo chất lượng cao'}</p>
                   <div className={styles.footer}>
                     <span>📍 FFZone</span>
-                    <button className="btn btn-primary btn-sm">Xem lịch</button>
+                    <button className="btn btn-primary btn-sm">Xem chi tiết</button>
                   </div>
                 </div>
               </div>

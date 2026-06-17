@@ -181,10 +181,7 @@ export default function FieldDetailPage() {
               <button
                 className={`btn btn-primary ${styles.bookBtn}`}
                 disabled={field.status !== 'ACTIVE'}
-                onClick={() => {
-                  // TODO: navigate to booking page khi có
-                  alert('Chức năng đặt sân đang được phát triển!')
-                }}
+                onClick={() => navigate(`/booking?fieldId=${field.id}&date=${selectedDate}`)}
               >
                 {field.status === 'ACTIVE' ? '⚽ Đặt sân ngay' : 'Sân đang tạm dừng'}
               </button>

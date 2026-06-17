@@ -5,6 +5,9 @@ import Footer from './components/layout/Footer'
 import HomePage from './pages/public/HomePage'
 import FieldListPage from './pages/public/FieldListPage'
 import FieldDetailPage from './pages/public/FieldDetailPage'
+import BookingPage from './pages/user/BookingPage'
+import BookingConfirmPage from './pages/user/BookingConfirmPage'
+import MyBookingsPage from './pages/user/MyBookingsPage'
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
 import NotFoundPage from './pages/public/NotFoundPage'
@@ -46,6 +49,19 @@ export default function App() {
       <Route path="/fields/:id" element={<PublicLayout><FieldDetailPage /></PublicLayout>} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+
+      {/* Booking flow */}
+      <Route path="/booking" element={<PublicLayout><BookingPage /></PublicLayout>} />
+      <Route path="/booking-confirm/:id" element={
+        <RequireAuth>
+          <PublicLayout><BookingConfirmPage /></PublicLayout>
+        </RequireAuth>
+      } />
+      <Route path="/my-bookings" element={
+        <RequireAuth>
+          <PublicLayout><MyBookingsPage /></PublicLayout>
+        </RequireAuth>
+      } />
 
       {/* Staff dashboard */}
       <Route path="/staff/*" element={

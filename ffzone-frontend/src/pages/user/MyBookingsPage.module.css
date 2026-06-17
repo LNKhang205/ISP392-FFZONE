@@ -1,0 +1,65 @@
+.page { padding: 40px 0 80px; min-height: 80vh; }
+
+.header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 24px;
+}
+.header h1 { font-size: 1.5rem; font-weight: 800; color: #111827; }
+
+/* Tabs */
+.tabs { display: flex; gap: 6px; margin-bottom: 24px; flex-wrap: wrap; }
+.tab {
+  padding: 7px 14px; border-radius: 20px; border: 1.5px solid #e5e7eb;
+  background: white; font-size: .85rem; font-weight: 600;
+  cursor: pointer; color: #6b7280; transition: all .15s;
+  display: flex; align-items: center; gap: 5px;
+}
+.tab:hover { border-color: #16a34a; color: #16a34a; }
+.tabActive { background: #16a34a; color: white !important; border-color: #16a34a !important; }
+.tabCount {
+  background: rgba(255,255,255,.3); border-radius: 10px;
+  padding: 1px 6px; font-size: .75rem;
+}
+.tab:not(.tabActive) .tabCount { background: #f3f4f6; color: #6b7280; }
+
+/* Loading skeleton */
+.loadingWrap { display: flex; flex-direction: column; gap: 16px; }
+.skeleton { height: 140px; border-radius: 16px; background: #f3f4f6; animation: shimmer 1.5s infinite; }
+@keyframes shimmer { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+/* Empty */
+.empty { text-align: center; padding: 80px 20px; }
+.empty span { font-size: 3rem; display: block; margin-bottom: 12px; }
+.empty p { color: #6b7280; margin-bottom: 16px; }
+
+/* Booking card */
+.list { display: flex; flex-direction: column; gap: 16px; }
+.bookingCard {
+  background: white; border: 1px solid #e5e7eb;
+  border-radius: 16px; padding: 20px 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.04);
+  transition: box-shadow .15s;
+}
+.bookingCard:hover { box-shadow: 0 4px 20px rgba(0,0,0,.08); }
+
+.cardTop { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+.bookingCode { font-family: monospace; font-size: .9rem; font-weight: 700; color: #1d4ed8; }
+.fieldName   { font-size: 1.05rem; font-weight: 700; color: #111827; margin-top: 2px; }
+
+.statusBadge { border-radius: 20px; padding: 4px 12px; font-size: .8rem; font-weight: 700; white-space: nowrap; }
+
+.slotInfo { font-size: .88rem; color: #6b7280; margin-bottom: 10px; }
+.slotCount { color: #9ca3af; }
+
+.services { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.svcChip {
+  background: #f3f4f6; color: #374151;
+  border-radius: 20px; padding: 3px 10px; font-size: .8rem;
+}
+
+.cardBottom { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+.amounts { display: flex; align-items: center; gap: 10px; }
+.discount { font-size: .85rem; color: #16a34a; }
+.total { font-size: 1.1rem; font-weight: 800; color: #111827; }
+
+.cardActions { display: flex; gap: 8px; }

@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -21,6 +22,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -48,7 +50,22 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST,   "/api/fields/**").hasRole("IT_ADMIN")
                 .requestMatchers(HttpMethod.PUT,    "/api/fields/**").hasRole("IT_ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/fields/**").hasRole("IT_ADMIN")
-                .requestMatchers("/api/field-pricings/**").hasRole("IT_ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/field-pricings/**").permitAll()
+                .requestMatchers(HttpMethod.POST,   "/api/field-pricings/**").hasRole("IT_ADMIN")
+                .requestMatchers(HttpMethod.PUT,    "/api/field-pricings/**").hasRole("IT_ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/field-pricings/**").hasRole("IT_ADMIN")
+
+                // ── Booking: User tạo + xem của mình ──
+                .requestMatchers(HttpMethod.POST, "/api/bookings").hasRole("USER")
+                .requestMatchers(HttpMethod.GET,  "/api/bookings/my/**").hasRole("USER")
+                .requestMatchers(HttpMethod.GET,  "/api/bookings/my").hasRole("USER")
+                .requestMatchers(HttpMethod.POST, "/api/bookings/*/cancel").hasRole("USER")
+
+                // ── Booking: Staff / IT_ADMIN / OWNER quản lý ──
+                .requestMatchers(HttpMethod.GET,  "/api/bookings").hasAnyRole("STAFF","IT_ADMIN","OWNER")
+                .requestMatchers(HttpMethod.GET,  "/api/bookings/*").hasAnyRole("STAFF","IT_ADMIN","OWNER")
+                .requestMatchers(HttpMethod.POST, "/api/bookings/*/checkin").hasRole("STAFF")
+                .requestMatchers(HttpMethod.POST, "/api/bookings/*/checkout").hasRole("STAFF")
 
                 // ── IT_ADMIN hoặc OWNER ──
                 .requestMatchers(HttpMethod.POST,   "/api/field-images/**").hasAnyRole("IT_ADMIN", "OWNER")
