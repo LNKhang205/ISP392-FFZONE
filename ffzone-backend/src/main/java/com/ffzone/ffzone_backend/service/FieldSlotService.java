@@ -14,13 +14,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
+/**
+ * Chỉ chứa QUERY + BUSINESS LOGIC + PRICING HELPERS.
+ * Việc generate slot đã chuyển sang SlotGeneratorService.
+ * Không inject SlotGeneratorService → không circular dependency.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -30,41 +35,40 @@ public class FieldSlotService {
     private final FieldRepository        fieldRepository;
     private final FieldPricingRepository pricingRepository;
 
-    private static final int PLAY_MINUTES  = 60;
-    private static final int BREAK_MINUTES = 15;
-    private static final int SLOT_STEP     = PLAY_MINUTES + BREAK_MINUTES; // 75 phút
+    private static final int        PLAY_MINUTES       = 60;
+    private static final int        BREAK_MINUTES      = 15;
+    private static final int        SLOT_STEP          = PLAY_MINUTES + BREAK_MINUTES;
+    private static final LocalTime  DEFAULT_START      = LocalTime.of(5, 0);
+    private static final LocalTime  DEFAULT_END        = LocalTime.of(23, 45);
+    private static final BigDecimal WEEKEND_MULTIPLIER = new BigDecimal("1.25");
+    private static final BigDecimal HUNDRED            = new BigDecimal("100");
 
-    // ── Public API ─────────────────────────────────────────────
+    // ── Query methods ────────────────────────────────────────────────────────
 
     @Transactional
     public List<FieldSlotResponse> findAllByDate(LocalDate date) {
-        fieldRepository.findAll().forEach(f -> ensureSlotsGenerated(f, date));
         return slotRepository.findBySlotDateOrderByStartTime(date)
                 .stream().map(FieldSlotResponse::from).toList();
     }
 
     @Transactional
     public List<FieldSlotResponse> findByFieldAndDate(UUID fieldId, LocalDate date) {
-        Field field = getFieldOrThrow(fieldId);
-        ensureSlotsGenerated(field, date);
+        getFieldOrThrow(fieldId);
         return slotRepository.findByFieldIdAndSlotDate(fieldId, date)
                 .stream().map(FieldSlotResponse::from).toList();
     }
 
+    @Transactional
     public List<FieldSlotResponse> findAvailableByFieldAndDate(UUID fieldId, LocalDate date) {
-        Field field = getFieldOrThrow(fieldId);
-        ensureSlotsGenerated(field, date);
+        getFieldOrThrow(fieldId);
         return slotRepository.findByFieldIdAndSlotDateAndStatus(fieldId, date, SlotStatus.AVAILABLE)
                 .stream().map(FieldSlotResponse::from).toList();
     }
 
     @Transactional
     public List<FieldSlotResponse> findByFieldAndDateRange(UUID fieldId, LocalDate from, LocalDate to) {
-        if (to.isAfter(from.plusDays(7)))
-            throw AppException.badRequest("Chỉ xem lịch tối đa 7 ngày");
-        Field field = getFieldOrThrow(fieldId);
-        for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1))
-            ensureSlotsGenerated(field, d);
+        if (to.isAfter(from.plusDays(7))) throw AppException.badRequest("Chi xem lich toi da 7 ngay");
+        getFieldOrThrow(fieldId);
         return slotRepository.findByFieldIdAndDateRange(fieldId, from, to)
                 .stream().map(FieldSlotResponse::from).toList();
     }
@@ -75,109 +79,113 @@ public class FieldSlotService {
 
     public FieldSlot getOrThrow(UUID id) {
         return slotRepository.findById(id)
-                .orElseThrow(() -> AppException.notFound("Slot không tồn tại: " + id));
+                .orElseThrow(() -> AppException.notFound("Slot khong ton tai: " + id));
     }
 
-    // ── Public generate (dùng bởi Scheduler) ───────────────────
+    // ── Sync / holiday adjustment ────────────────────────────────────────────
 
     @Transactional
-    public void generateSlotsForAllFields(LocalDate date) {
-        fieldRepository.findAll().forEach(f -> ensureSlotsGenerated(f, date));
+    public void syncGeneratedSlotPrices(UUID fieldId) {
+        syncGeneratedSlotPrices(List.of(fieldId));
     }
 
     @Transactional
-    public void generateSlotsForField(Field field, LocalDate date) {
-        ensureSlotsGenerated(field, date);
+    public void syncGeneratedSlotPrices(List<UUID> fieldIds) {
+        if (fieldIds == null || fieldIds.isEmpty()) return;
+        LocalDate from = LocalDate.now();
+        LocalDate to   = from.plusDays(6);
+        List<FieldSlot> slots = slotRepository.findByFieldIdsAndDateRange(fieldIds, from, to);
+        slots.forEach(s -> s.setPrice(calculateBasePrice(s.getField(), s.getSlotDate(), s.getStartTime())));
+        if (!slots.isEmpty()) slotRepository.saveAll(slots);
     }
 
-    /** Xóa slot AVAILABLE rồi generate lại — dùng khi pricing thay đổi */
     @Transactional
-    public void regenerateSlotsForField(UUID fieldId, LocalDate date) {
-        if (date.isBefore(LocalDate.now())) return;
-        Field field = getFieldOrThrow(fieldId);
-        // Chỉ xóa slot AVAILABLE, giữ nguyên BOOKED
-        slotRepository.deleteByFieldIdAndSlotDateAndStatus(fieldId, date, SlotStatus.AVAILABLE);
-        ensureSlotsGenerated(field, date);
+    public int applyHolidayAdjustment(List<UUID> fieldIds, LocalDate from, LocalDate to, BigDecimal adjustmentPercent) {
+        if (fieldIds == null || fieldIds.isEmpty()) throw AppException.badRequest("Vui long chon san");
+        if (from == null || to == null || to.isBefore(from))  throw AppException.badRequest("Khoang ngay khong hop le");
+        if (to.isAfter(from.plusDays(7)))  throw AppException.badRequest("Chi dieu chinh toi da 7 ngay");
+        if (adjustmentPercent == null)     throw AppException.badRequest("Vui long nhap phan tram dieu chinh");
+
+        BigDecimal multiplier = BigDecimal.ONE.add(adjustmentPercent.divide(HUNDRED, 4, RoundingMode.HALF_UP));
+        List<FieldSlot> slots = slotRepository.findByFieldIdsAndDateRange(fieldIds, from, to);
+        slots.forEach(s -> s.setPrice(
+                roundUp(calculateBasePrice(s.getField(), s.getSlotDate(), s.getStartTime()).multiply(multiplier))
+        ));
+        if (!slots.isEmpty()) slotRepository.saveAll(slots);
+        return slots.size();
     }
 
-    // ── Auto-generate logic ─────────────────────────────────────
+    // ── Pricing helpers (public — dùng bởi SlotGeneratorService) ────────────
 
-    private void ensureSlotsGenerated(Field field, LocalDate date) {
-        if (date.isBefore(LocalDate.now())) return;
-        if (slotRepository.existsByFieldIdAndSlotDate(field.getId(), date)) return;
+    public BigDecimal calculateBasePrice(Field field, LocalDate date, LocalTime startTime) {
+        List<FieldPricing> pricings = pricingRepository.findByFieldIdAndIsActive(field.getId(), true);
+        return calculateBasePriceFromCache(field, date, startTime, pricings);
+    }
 
-        DayOfWeek dow = date.getDayOfWeek();
-        boolean isWeekend = (dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY);
-        String dayType = isWeekend ? "WEEKEND" : "WEEKDAY";
-
-        List<FieldPricing> allActive = pricingRepository
-                .findByFieldIdAndIsActive(field.getId(), true)
-                .stream()
+    public BigDecimal calculateBasePriceFromCache(Field field, LocalDate date, LocalTime startTime,
+                                                   List<FieldPricing> allPricings) {
+        boolean weekend = isWeekend(date);
+        List<FieldPricing> active = allPricings.stream()
                 .filter(p -> isInEffectivePeriod(p, date))
+                .filter(p -> containsTime(p, startTime))
                 .toList();
 
-        // Lọc theo đúng dayType trước
-        List<FieldPricing> pricings = allActive.stream()
-                .filter(p -> matchesDay(p, dayType))
-                .sorted((a, b) -> a.getStartTime().compareTo(b.getStartTime()))
-                .toList();
+        FieldPricing direct = findByDay(active, weekend ? "WEEKEND" : "WEEKDAY");
+        if (direct != null) return direct.getPrice();
 
-        // Nếu không có pricing cho ngày này → fallback dùng WEEKDAY (áp dụng cuối tuần)
-        if (pricings.isEmpty() && isWeekend) {
-            pricings = allActive.stream()
-                    .filter(p -> matchesDay(p, "WEEKDAY"))
-                    .sorted((a, b) -> a.getStartTime().compareTo(b.getStartTime()))
-                    .toList();
-            if (!pricings.isEmpty())
-                log.info("Field {} has no WEEKEND pricing, fallback to WEEKDAY pricing", field.getName());
-        }
+        FieldPricing weekday = findByDay(active, "WEEKDAY");
+        if (weekend && weekday != null) return calculateWeekendPrice(weekday.getPrice());
 
-        if (pricings.isEmpty()) {
-            log.info("No pricing for field {} on {} ({}), skip", field.getName(), date, dayType);
-            return;
-        }
-
-        List<FieldSlot> toSave = new ArrayList<>();
-        for (FieldPricing pricing : pricings) {
-            LocalTime cursor     = pricing.getStartTime();
-            LocalTime pricingEnd = pricing.getEndTime();
-            while (!cursor.plusMinutes(PLAY_MINUTES).isAfter(pricingEnd)) {
-                LocalTime slotEnd = cursor.plusMinutes(PLAY_MINUTES);
-                boolean exists = slotRepository.existsByFieldIdAndSlotDateAndStartTime(
-                        field.getId(), date, cursor);
-                if (!exists) {
-                    toSave.add(FieldSlot.builder()
-                            .field(field)
-                            .slotDate(date)
-                            .startTime(cursor)
-                            .endTime(slotEnd)
-                            .status(SlotStatus.AVAILABLE)
-                            .build());
-                }
-                cursor = cursor.plusMinutes(SLOT_STEP);
-            }
-        }
-
-        if (!toSave.isEmpty()) {
-            slotRepository.saveAll(toSave);
-            log.info("Generated {} slots for field {} on {}", toSave.size(), field.getName(), date);
-        }
+        BigDecimal defaultWeekday = defaultWeekdayPrice(field);
+        return weekend ? calculateWeekendPrice(defaultWeekday) : defaultWeekday;
     }
 
-    private boolean isInEffectivePeriod(FieldPricing p, LocalDate date) {
-        if (p.getEffectiveFrom() != null && date.isBefore(p.getEffectiveFrom())) return false;
-        if (p.getEffectiveTo()   != null && date.isAfter(p.getEffectiveTo()))     return false;
+    public BigDecimal defaultWeekdayPrice(Field field) {
+        if (field.getType() == null) return new BigDecimal("200000");
+        return switch (field.getType()) {
+            case FIVE_VS_FIVE   -> new BigDecimal("200000");
+            case SEVEN_VS_SEVEN -> new BigDecimal("240000");
+            case NINE_VS_NINE   -> new BigDecimal("300000");
+        };
+    }
+
+    public BigDecimal calculateWeekendPrice(BigDecimal weekdayPrice) {
+        return roundUp(weekdayPrice.multiply(WEEKEND_MULTIPLIER));
+    }
+
+    // ── Private utils ────────────────────────────────────────────────────────
+
+    private BigDecimal roundUp(BigDecimal price) {
+        return price.setScale(0, RoundingMode.CEILING);
+    }
+
+    private boolean isWeekend(LocalDate date) {
+        DayOfWeek day = date.getDayOfWeek();
+        return day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY;
+    }
+
+    private FieldPricing findByDay(List<FieldPricing> pricings, String dayType) {
+        return pricings.stream().filter(p -> matchesDay(p, dayType)).findFirst().orElse(null);
+    }
+
+    private boolean containsTime(FieldPricing pricing, LocalTime startTime) {
+        return !pricing.getStartTime().isAfter(startTime) && pricing.getEndTime().isAfter(startTime);
+    }
+
+    private boolean isInEffectivePeriod(FieldPricing pricing, LocalDate date) {
+        if (pricing.getEffectiveFrom() != null && date.isBefore(pricing.getEffectiveFrom())) return false;
+        if (pricing.getEffectiveTo()   != null && date.isAfter(pricing.getEffectiveTo()))    return false;
         return true;
     }
 
-    private boolean matchesDay(FieldPricing p, String dayType) {
-        String dow = p.getDayOfWeek();
-        if (dow == null || dow.isBlank() || "ALL".equalsIgnoreCase(dow)) return true;
-        return dow.equalsIgnoreCase(dayType);
+    private boolean matchesDay(FieldPricing pricing, String dayType) {
+        String d = pricing.getDayOfWeek();
+        if (d == null || d.isBlank() || "ALL".equalsIgnoreCase(d)) return true;
+        return d.equalsIgnoreCase(dayType);
     }
 
     private Field getFieldOrThrow(UUID fieldId) {
         return fieldRepository.findById(fieldId)
-                .orElseThrow(() -> AppException.notFound("Sân không tồn tại: " + fieldId));
+                .orElseThrow(() -> AppException.notFound("San khong ton tai: " + fieldId));
     }
 }

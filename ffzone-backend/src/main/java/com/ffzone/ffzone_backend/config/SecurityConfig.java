@@ -1,6 +1,7 @@
 package com.ffzone.ffzone_backend.config;
 
 import com.ffzone.ffzone_backend.security.JwtFilter;
+import com.ffzone.ffzone_backend.security.OAuth2SuccessHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,16 +26,22 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // OAuth2 requires session for the authorization code flow; JWT APIs stay stateless
+            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                // ── Public (không cần login) ──
+
+                // ── OAuth2 endpoints ──────────────────────────────────────
+                .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
+
+                // ── Public (không cần login) ──────────────────────────────
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/fields/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/field-images/**").permitAll()
@@ -43,21 +50,37 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/vouchers/available").permitAll()
                 .requestMatchers("/uploads/**").permitAll()
 
-                // ── IT_ADMIN only ──
+                // GET field-pricings là public (BookingPage dùng để tính giá)
+                .requestMatchers(HttpMethod.GET, "/api/field-pricings/**").permitAll()
+
+                // ── Self-service profile (mọi role đã đăng nhập) ──────────
+                .requestMatchers(HttpMethod.PUT, "/api/accounts/me/profile").authenticated()
+                .requestMatchers(HttpMethod.PUT, "/api/accounts/me/password").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/accounts/me/avatar").authenticated()
+
+                // ── IT_ADMIN only ─────────────────────────────────────────
                 .requestMatchers("/api/accounts/**").hasRole("IT_ADMIN")
                 .requestMatchers(HttpMethod.POST,   "/api/fields/**").hasRole("IT_ADMIN")
                 .requestMatchers(HttpMethod.PUT,    "/api/fields/**").hasRole("IT_ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/fields/**").hasRole("IT_ADMIN")
-                .requestMatchers("/api/field-pricings/**").hasRole("IT_ADMIN")
 
-                // ── IT_ADMIN hoặc OWNER ──
+                // POST / PUT / DELETE field-pricings chỉ IT_ADMIN
+                .requestMatchers(HttpMethod.POST,   "/api/field-pricings/**").hasRole("IT_ADMIN")
+                .requestMatchers(HttpMethod.PUT,    "/api/field-pricings/**").hasRole("IT_ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/field-pricings/**").hasRole("IT_ADMIN")
+
+                // ── IT_ADMIN hoặc OWNER ───────────────────────────────────
                 .requestMatchers(HttpMethod.POST,   "/api/field-images/**").hasAnyRole("IT_ADMIN", "OWNER")
                 .requestMatchers(HttpMethod.PUT,    "/api/field-images/**").hasAnyRole("IT_ADMIN", "OWNER")
                 .requestMatchers(HttpMethod.DELETE, "/api/field-images/**").hasAnyRole("IT_ADMIN", "OWNER")
                 .requestMatchers("/api/vouchers/**").hasAnyRole("IT_ADMIN", "OWNER")
 
-                // ── Còn lại phải login ──
+                // ── Còn lại phải login ────────────────────────────────────
                 .anyRequest().authenticated()
+            )
+            // ── Google OAuth2 login ───────────────────────────────────────
+            .oauth2Login(oauth2 -> oauth2
+                .successHandler(oAuth2SuccessHandler)
             )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 

@@ -416,6 +416,9 @@ export default function StaffDashboard() {
       <div className={styles.main}>
         <div className={styles.topbar}>
           <span className={styles.welcome}>Xin chào, <strong>{user?.fullName}</strong></span>
+          <button onClick={() => navigate('/')} className="btn btn-outline btn-sm" style={{ marginLeft: 'auto' }}>
+            🏠 Về trang chủ
+          </button>
         </div>
         <div className={styles.content}>
           <Routes>

@@ -29,6 +29,10 @@ public class AuthService {
         if (!account.getIsActive())
             throw AppException.forbidden("Tài khoản đã bị khóa");
 
+        // Google-only accounts have no password
+        if (account.getPasswordHash() == null)
+            throw AppException.badRequest("Tài khoản này đăng nhập bằng Google. Vui lòng dùng 'Tiếp tục với Google'.");
+
         if (!passwordEncoder.matches(req.getPassword(), account.getPasswordHash()))
             throw AppException.badRequest("Email hoặc mật khẩu không đúng");
 

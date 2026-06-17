@@ -1,0 +1,131 @@
+.page {
+  padding: 32px 0 64px;
+  min-height: 60vh;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: #111;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 28px;
+  max-width: 560px;
+}
+
+.avatarSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.avatarWrap {
+  width: 96px;
+  height: 96px;
+}
+
+.avatarImg {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #e5e7eb;
+}
+
+.avatarFallback {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ede9fe;
+  color: #5b21b6;
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+.infoGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.rowLabel {
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.rowValue {
+  color: #111;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.formGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.input {
+  padding: 9px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+.input:disabled {
+  background: #f9fafb;
+  color: #9ca3af;
+}
+
+.hint {
+  color: #9ca3af;
+  font-size: 0.75rem;
+}
+
+.formActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.msgSuccess {
+  color: #166534;
+  background: #dcfce7;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  margin-bottom: 16px;
+}
+
+.msgError {
+  color: #991b1b;
+  background: #fee2e2;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  margin-bottom: 16px;
+}

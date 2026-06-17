@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import api from '../../services/api'
+import { useCustomerOnly } from '../../hooks/useCustomerOnly'
 import styles from './FieldDetailPage.module.css'
 
 const FALLBACK = 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=600&q=80'
@@ -17,6 +18,7 @@ export default function FieldDetailPage() {
   const { id } = useParams()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const guard = useCustomerOnly()
 
   const todayStr = new Date().toISOString().split('T')[0]
   const [selectedDate, setSelectedDate] = useState(searchParams.get('date') || todayStr)
@@ -181,7 +183,7 @@ export default function FieldDetailPage() {
               <button
                 className={`btn btn-primary ${styles.bookBtn}`}
                 disabled={field.status !== 'ACTIVE'}
-                onClick={() => navigate(`/booking?fieldId=${field.id}`)}
+                onClick={guard(() => navigate(`/booking?fieldId=${field.id}`))}
               >
                 {field.status === 'ACTIVE' ? '⚽ Đặt sân ngay' : 'Sân đang tạm dừng'}
               </button>

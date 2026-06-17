@@ -20,9 +20,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class FieldService {
 
-    private final FieldRepository fieldRepository;
+    private final FieldRepository      fieldRepository;
     private final FieldImageRepository fieldImageRepository;
-    private final FieldSlotService fieldSlotService;
+    private final SlotGeneratorService slotGeneratorService;  // thay FieldSlotService
 
     public List<FieldResponse> findAll() {
         return fieldRepository.findAll().stream()
@@ -55,10 +55,10 @@ public class FieldService {
             .build();
         Field saved = fieldRepository.save(field);
 
-        // Auto-generate slots cho 7 ngày tới ngay khi tạo sân mới
-        LocalDate today = java.time.LocalDate.now();
+        // Auto-generate slots cho 7 ngày tới — mỗi ngày là 1 tx nhỏ
+        LocalDate today = LocalDate.now();
         for (int i = 0; i < 7; i++)
-            fieldSlotService.generateSlotsForField(saved, today.plusDays(i));
+            slotGeneratorService.generateForField(saved, today.plusDays(i));
 
         return FieldResponse.from(saved, null);
     }
@@ -66,10 +66,10 @@ public class FieldService {
     @Transactional
     public FieldResponse update(UUID id, FieldRequest req) {
         Field field = getOrThrow(id);
-        if (req.getName() != null) field.setName(req.getName());
-        if (req.getType() != null) field.setType(req.getType());
+        if (req.getName()        != null) field.setName(req.getName());
+        if (req.getType()        != null) field.setType(req.getType());
         if (req.getDescription() != null) field.setDescription(req.getDescription());
-        if (req.getStatus() != null) field.setStatus(req.getStatus());
+        if (req.getStatus()      != null) field.setStatus(req.getStatus());
         Field saved = fieldRepository.save(field);
         return FieldResponse.from(saved, getThumbnailUrl(id));
     }
@@ -85,11 +85,9 @@ public class FieldService {
             .orElseThrow(() -> AppException.notFound("Sân không tồn tại: " + id));
     }
 
-    /** Trả về URL của ảnh thumbnail (relative path), null nếu chưa có ảnh */
     private String getThumbnailUrl(UUID fieldId) {
         List<FieldImage> thumbs = fieldImageRepository.findByFieldIdAndIsThumbnail(fieldId, true);
         if (!thumbs.isEmpty()) return thumbs.get(0).getImageUrl();
-        // fallback: lấy ảnh đầu tiên nếu không có thumbnail
         List<FieldImage> all = fieldImageRepository.findByFieldId(fieldId);
         return all.isEmpty() ? null : all.get(0).getImageUrl();
     }

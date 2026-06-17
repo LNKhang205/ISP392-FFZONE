@@ -293,7 +293,7 @@ function PricingManagement() {
   const save = async () => {
     setMsg('')
     try {
-      await api.post('/field-pricings', { ...form, fieldId: Number(form.fieldId), price: Number(form.price) })
+      await api.post('/field-pricings', { ...form, price: Number(form.price) })
       setMsg('✅ Đã thêm giá sân')
       setForm({ fieldId: '', dayType: 'WEEKDAY', startTime: '05:00', endTime: '23:00', price: '' })
       load()
@@ -505,6 +505,9 @@ export default function AdminDashboard() {
         <div className={styles.topbar}>
           <span className={styles.welcome}>Xin chào, <strong>{user?.fullName}</strong></span>
           <span className={styles.roleBadgeTop}>IT Admin</span>
+          <button onClick={() => navigate('/')} className="btn btn-outline btn-sm" style={{ marginLeft: 'auto' }}>
+            🏠 Về trang chủ
+          </button>
         </div>
         <div className={styles.content}>
           <Routes>

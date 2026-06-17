@@ -1,238 +1,287 @@
 /* ── Page ─────────────────────────────────────────────── */
-.page { min-height: 100vh; padding-bottom: 40px; }
-
+.page { min-height: 100vh; padding-bottom: 40px; background: #f8fafc; }
+ 
 /* ── Header ───────────────────────────────────────────── */
 .header {
   background: linear-gradient(135deg, #0f4c2a 0%, #16a34a 100%);
   padding: 28px 0 0;
   margin-bottom: 24px;
 }
-.headerTop { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
+.headerTop { display: flex; align-items: flex-start; margin-bottom: 20px; }
 .title { font-size: 28px; font-weight: 800; color: #fff; margin-bottom: 4px; }
 .sub   { font-size: 15px; color: rgba(255,255,255,.75); }
-
+ 
 /* Date strip */
 .dateStrip {
-  display: flex; gap: 6px; overflow-x: auto; padding-bottom: 16px;
+  display: flex; gap: 6px; overflow-x: auto; padding-bottom: 0;
   scrollbar-width: none;
 }
 .dateStrip::-webkit-scrollbar { display: none; }
 .dateBtn {
   flex-shrink: 0;
   display: flex; flex-direction: column; align-items: center; gap: 2px;
-  padding: 10px 18px; border-radius: 10px 10px 0 0;
-  background: rgba(255,255,255,.15); color: rgba(255,255,255,.85);
+  padding: 10px 20px; border-radius: 10px 10px 0 0;
+  background: rgba(255,255,255,.12); color: rgba(255,255,255,.85);
   border: none; cursor: pointer; transition: all .18s;
-  min-width: 90px;
+  min-width: 96px;
 }
-.dateBtn:hover { background: rgba(255,255,255,.25); }
+.dateBtn:hover { background: rgba(255,255,255,.22); }
 .dateBtnActive { background: #fff !important; color: #16a34a !important; font-weight: 700; }
 .dateBtnLabel { font-size: 13px; font-weight: 600; }
-.dateBtnIso   { font-size: 11px; opacity: .7; }
-.dateBtnActive .dateBtnIso { opacity: .6; }
-
+.dateBtnIso   { font-size: 11px; opacity: .65; }
+ 
 /* ── Info card ────────────────────────────────────────── */
 .infoCard {
-  display: flex; flex-wrap: wrap; gap: 12px 24px;
+  display: flex; flex-wrap: wrap; gap: 10px 24px;
   background: #f0fdf4; border: 1px solid #bbf7d0;
-  border-radius: var(--radius); padding: 14px 20px;
+  border-radius: 12px; padding: 12px 20px;
   margin-bottom: 20px; font-size: 13px; color: #166534;
 }
 .infoItem { display: flex; align-items: center; gap: 6px; }
-
+ 
 /* ── Filters ──────────────────────────────────────────── */
 .filters {
   display: flex; flex-wrap: wrap; gap: 20px;
-  background: #fff; border-radius: var(--radius);
+  background: #fff; border-radius: 12px;
   padding: 16px 20px; margin-bottom: 16px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 1px 4px rgba(0,0,0,.07);
 }
 .filterGroup { display: flex; flex-direction: column; gap: 6px; }
-.filterGroup label { font-size: 12px; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: .05em; }
+.filterGroup label { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; }
 .filterBtns { display: flex; gap: 6px; }
 .filterBtn {
   padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;
-  background: var(--gray-100); color: var(--gray-600);
+  background: #f1f5f9; color: #64748b;
   border: 1.5px solid transparent; cursor: pointer; transition: all .15s;
 }
-.filterBtn:hover { background: var(--green-light); color: var(--green); }
-.filterBtnActive { background: var(--green-light); color: var(--green); border-color: var(--green); }
+.filterBtn:hover { background: #dcfce7; color: #16a34a; }
+.filterBtnActive { background: #dcfce7; color: #16a34a; border-color: #16a34a; }
 .filterSelect {
   padding: 7px 12px; border-radius: 8px; font-size: 13px; font-weight: 500;
-  border: 1.5px solid var(--gray-200); background: #fff; outline: none;
-  color: var(--gray-700); cursor: pointer;
+  border: 1.5px solid #e2e8f0; background: #fff; outline: none;
+  color: #334155; cursor: pointer;
 }
-.filterSelect:focus { border-color: var(--green); }
-
+.filterSelect:focus { border-color: #16a34a; }
+ 
 /* ── Legend ───────────────────────────────────────────── */
 .legend {
   display: flex; gap: 20px; align-items: center;
-  font-size: 13px; color: var(--gray-600); margin-bottom: 16px;
+  font-size: 13px; color: #64748b; margin-bottom: 16px;
+  padding: 0 4px;
 }
 .dot {
   display: inline-block; width: 14px; height: 14px;
   border-radius: 4px; margin-right: 4px; vertical-align: middle;
 }
-.dotAvail    { background: #dcfce7; border: 1.5px solid #16a34a; }
+.dotAvail    { background: #fff; border: 1.5px solid #d1d5db; }
 .dotBooked   { background: #fee2e2; border: 1.5px solid #ef4444; }
 .dotClosed   { background: #e2e8f0; border: 1.5px solid #94a3b8; }
 .dotSelected { background: #16a34a; border: 1.5px solid #15803d; }
-
+ 
 /* ── Loading / Empty ──────────────────────────────────── */
-.loadingWrap { text-align: center; padding: 60px 0; color: var(--gray-500); }
+.loadingWrap { text-align: center; padding: 80px 0; color: #94a3b8; }
 .spinner {
-  width: 40px; height: 40px; border-radius: 50%;
-  border: 4px solid var(--gray-200); border-top-color: var(--green);
-  animation: spin .8s linear infinite; margin: 0 auto 12px;
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 4px solid #e2e8f0; border-top-color: #16a34a;
+  animation: spin .8s linear infinite; margin: 0 auto 16px;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 .empty { text-align: center; padding: 80px 20px; }
 .empty span { font-size: 64px; display: block; margin-bottom: 12px; }
 .empty h3 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
-.empty p { color: var(--gray-500); }
-
+.empty p { color: #94a3b8; }
+ 
 /* ── Schedule ─────────────────────────────────────────── */
-.scheduleWrap { display: flex; flex-direction: column; gap: 16px; }
-
+.scheduleWrap { display: flex; flex-direction: column; gap: 20px; }
+ 
+/* ── Type Group ────────────────────────────────────────── */
 .typeGroup {
-  background: #fff; border-radius: var(--radius);
-  box-shadow: var(--shadow-sm); overflow: hidden;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.07);
+  overflow: hidden;
+  border: 1.5px solid #e2e8f0;
 }
+ 
+/* TYPE HEADER — nổi bật theo từng loại sân */
 .typeHeader {
-  display: flex; align-items: center; gap: 10px;
-  width: 100%; padding: 14px 20px;
-  background: #f8fafc; border: none; cursor: pointer;
-  font-size: 15px; font-weight: 700; color: var(--gray-800);
-  border-bottom: 1px solid var(--gray-100); transition: background .15s;
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; padding: 16px 20px;
+  border: none; cursor: pointer;
+  font-size: 16px; font-weight: 800;
+  border-bottom: 2px solid rgba(255,255,255,.2);
+  transition: filter .15s;
 }
-.typeHeader:hover { background: var(--green-light); }
+.typeHeader:hover { filter: brightness(.95); }
+ 
+/* Màu khác nhau cho 3 loại */
+.typeHeader5v5 {
+  background: linear-gradient(90deg, #166534 0%, #16a34a 100%);
+  color: #fff;
+}
+.typeHeader7v7 {
+  background: linear-gradient(90deg, #1e3a8a 0%, #2563eb 100%);
+  color: #fff;
+}
+.typeHeader9v9 {
+  background: linear-gradient(90deg, #7c2d12 0%, #ea580c 100%);
+  color: #fff;
+}
+ 
+.typeIcon { font-size: 22px; }
+.typeTitle { font-size: 17px; font-weight: 800; }
+.typeSubtitle { font-size: 13px; font-weight: 400; opacity: .8; margin-left: 4px; }
+ 
 .typeCount {
   margin-left: auto;
-  font-size: 12px; font-weight: 500; color: var(--gray-500);
-  background: var(--gray-100); padding: 2px 10px; border-radius: 99px;
+  font-size: 12px; font-weight: 700;
+  background: rgba(255,255,255,.2);
+  padding: 3px 12px; border-radius: 99px;
 }
-
-/* Timeline */
+.typeChevron { font-size: 12px; opacity: .8; }
+ 
+/* ── Timeline ──────────────────────────────────────────── */
 .timelineOuter { overflow-x: auto; }
 .timelineHeader,
 .timelineRow {
   display: grid;
-  grid-template-columns: 180px 1fr;
+  grid-template-columns: 190px 1fr;
   min-width: 600px;
 }
 .timelineHeader {
-  position: sticky; top: 60px; z-index: 4;
-  background: #f1f5f9; border-bottom: 1px solid var(--gray-200);
+  background: #f1f5f9;
+  border-bottom: 1.5px solid #e2e8f0;
 }
 .timelineRow {
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid #f1f5f9;
   transition: background .1s;
 }
 .timelineRow:last-child { border-bottom: none; }
-.timelineRow:hover { background: #fafafa; }
-
+.timelineRow:hover { background: #fafff7; }
+ 
+/* Field name column */
 .fieldNameCol {
-  display: flex; flex-direction: column; justify-content: center; gap: 4px;
-  padding: 12px 16px;
+  display: flex; flex-direction: column; justify-content: center; gap: 6px;
+  padding: 14px 16px;
   position: sticky; left: 0; z-index: 3;
   background: inherit;
-  border-right: 2px solid var(--gray-100);
-  min-width: 180px;
+  border-right: 2px solid #f1f5f9;
+  min-width: 190px;
 }
-.fieldNameText { font-size: 14px; font-weight: 700; color: var(--gray-800); }
-
+.fieldNameText {
+  font-size: 14px; font-weight: 800; color: #1e293b;
+}
+ 
+/* Loại sân badge trong field name */
+.fieldTypeBadge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 99px;
+  font-size: 11px; font-weight: 700;
+  width: fit-content;
+}
+.badge5v5 { background: #dcfce7; color: #166534; }
+.badge7v7 { background: #dbeafe; color: #1e3a8a; }
+.badge9v9 { background: #ffedd5; color: #7c2d12; }
+ 
+/* Slots row */
 .slotsRow {
-  display: flex; align-items: center; padding: 8px 12px; gap: 6px;
-  overflow-x: visible;
+  display: flex; align-items: center; padding: 10px 12px; gap: 6px;
 }
 .timeLabel {
-  flex-shrink: 0; width: 66px;
-  font-size: 11px; font-weight: 600; color: var(--gray-500);
+  flex-shrink: 0; width: 68px;
+  font-size: 11px; font-weight: 600; color: #94a3b8;
   text-align: center; padding: 8px 0;
 }
-
+ 
 /* Slot cells */
 .slotCell {
-  flex-shrink: 0; width: 66px; height: 44px;
-  border-radius: 8px; display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 600; cursor: default;
+  flex-shrink: 0; width: 68px; height: 46px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; cursor: default;
   transition: transform .12s, box-shadow .12s;
-  position: relative;
 }
-
-.slotNone   { background: transparent; }
+ 
+.slotNone { background: transparent; }
+ 
 .slot_avail {
-  background: #dcfce7; color: #166534;
-  border: 1.5px solid #86efac;
+  background: #fff; color: #166534;
+  border: 1.5px solid #d1d5db;
+  cursor: pointer;
 }
+.slot_avail:hover { transform: scale(1.06); box-shadow: 0 2px 8px rgba(22,163,74,.2); border-color: #16a34a; }
+ 
 .slot_booked {
   background: #fee2e2; color: #991b1b;
   border: 1.5px solid #fca5a5;
 }
 .slot_closed {
-  background: var(--gray-100); color: var(--gray-400);
-  border: 1.5px solid var(--gray-200);
+  background: #f1f5f9; color: #94a3b8;
+  border: 1.5px solid #e2e8f0;
 }
 .slot_selected {
   background: #16a34a; color: #fff;
-  border: 1.5px solid #15803d;
-  box-shadow: 0 2px 8px rgba(22,163,74,.35);
-  transform: scale(1.06);
+  border: 2px solid #15803d;
+  box-shadow: 0 2px 10px rgba(22,163,74,.4);
+  transform: scale(1.08);
 }
 .slotSelectable {
   cursor: pointer;
   border-style: dashed !important;
   border-color: #16a34a !important;
+  border-width: 2px !important;
 }
 .slotSelectable:hover {
   transform: scale(1.06);
-  box-shadow: 0 2px 8px rgba(22,163,74,.2);
+  box-shadow: 0 2px 8px rgba(22,163,74,.25);
 }
-.slot_avail { cursor: pointer; }
-.slot_avail:hover { transform: scale(1.04); }
 .slotTime { font-size: 10px; font-weight: 700; }
-.slotIcon { font-size: 12px; }
-.slotCheck { font-size: 16px; }
-.slotDim { opacity: 0.3; }
-
-/* ── Summary Panel ────────────────────────────────────── */
+.slotIcon { font-size: 13px; }
+.slotCheck { font-size: 18px; }
+.slotDim { opacity: 0.25; pointer-events: none; }
+ 
+/* ── Summary Panel (sticky bottom) ─────────────────────── */
 .summaryPanel {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
-  background: #0f4c2a;
-  border-top: 3px solid #16a34a;
-  box-shadow: 0 -4px 24px rgba(0,0,0,.2);
+  background: linear-gradient(135deg, #0f4c2a 0%, #166534 100%);
+  border-top: 3px solid #4ade80;
+  box-shadow: 0 -4px 32px rgba(0,0,0,.25);
   padding: 14px 0;
-  animation: slideUp .25s ease;
+  animation: slideUp .22s ease;
 }
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-
+ 
 .summaryInner {
   display: flex; align-items: center; justify-content: space-between; gap: 20px;
   flex-wrap: wrap;
 }
-.summaryLeft { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
-.summaryField { font-size: 15px; font-weight: 700; color: #fff; }
+.summaryLeft { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 0; }
+.summaryField { font-size: 15px; font-weight: 800; color: #fff; }
 .summarySlots { display: flex; flex-wrap: wrap; gap: 6px; }
 .summarySlotTag {
-  font-size: 12px; font-weight: 600; color: #bbf7d0;
-  background: rgba(255,255,255,.1); padding: 2px 10px; border-radius: 99px;
+  font-size: 12px; font-weight: 700; color: #bbf7d0;
+  background: rgba(255,255,255,.12); padding: 3px 12px; border-radius: 99px;
+  border: 1px solid rgba(255,255,255,.15);
 }
-.summaryMeta { font-size: 12px; color: rgba(255,255,255,.65); }
-
+.summaryMeta { font-size: 12px; color: rgba(255,255,255,.6); }
+ 
 .summaryRight { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
 .summaryPrice {
-  font-size: 22px; font-weight: 800; color: #fff;
+  font-size: 24px; font-weight: 900; color: #fff;
   white-space: nowrap;
 }
-.summaryBtn { padding: 12px 28px; font-size: 15px; font-weight: 700; background: #fff; color: #16a34a; }
+.summaryBtn {
+  padding: 12px 28px; font-size: 15px; font-weight: 800;
+  background: #fff; color: #16a34a;
+  border-radius: 10px;
+}
 .summaryBtn:hover { background: #dcfce7; }
 .summaryClear {
-  font-size: 13px; color: rgba(255,255,255,.55);
+  font-size: 13px; color: rgba(255,255,255,.5);
   background: none; border: none; cursor: pointer; text-decoration: underline;
 }
 .summaryClear:hover { color: #fff; }
-
-/* ── Responsive ───────────────────────────────────────── */
+ 
 @media (max-width: 768px) {
   .title { font-size: 22px; }
   .filters { gap: 12px; }

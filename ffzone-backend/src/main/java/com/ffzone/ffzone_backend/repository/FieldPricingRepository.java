@@ -12,6 +12,8 @@ import java.util.UUID;
 
 public interface FieldPricingRepository extends JpaRepository<FieldPricing, UUID> {
     List<FieldPricing> findByFieldIdAndIsActive(UUID fieldId, Boolean isActive);
+    List<FieldPricing> findByIsActive(Boolean isActive);
+    Optional<FieldPricing> findFirstByFieldIdAndDayOfWeekAndIsActiveOrderByEffectiveFromDesc(UUID fieldId, String dayOfWeek, Boolean isActive);
 
     @Query("""
         SELECT p FROM FieldPricing p

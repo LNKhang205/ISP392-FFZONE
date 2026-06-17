@@ -7,11 +7,14 @@ import FieldListPage from './pages/public/FieldListPage'
 import FieldDetailPage from './pages/public/FieldDetailPage'
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
+import OAuth2CallbackPage from './pages/auth/OAuth2CallbackPage'
 import NotFoundPage from './pages/public/NotFoundPage'
 import BookingPage from './pages/public/BookingPage'
 import StaffDashboard from './pages/staff/StaffDashboard'
 import OwnerDashboard from './pages/owner/OwnerDashboard'
 import AdminDashboard from './pages/admin/AdminDashboard'
+import ProfilePage from './pages/user/ProfilePage'
+import ChangePasswordPage from './pages/user/ChangePasswordPage'
 
 function RequireAuth({ children }) {
   const { isLoggedIn } = useAuth()
@@ -48,6 +51,21 @@ export default function App() {
       <Route path="/booking" element={<PublicLayout><BookingPage /></PublicLayout>} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+
+      {/* My Profile / Change Password — CUSTOMER (USER) only */}
+      <Route path="/profile" element={
+        <RequireRole roles={['USER']}>
+          <PublicLayout><ProfilePage /></PublicLayout>
+        </RequireRole>
+      } />
+      <Route path="/profile/change-password" element={
+        <RequireRole roles={['USER']}>
+          <PublicLayout><ChangePasswordPage /></PublicLayout>
+        </RequireRole>
+      } />
+
+      {/* Google OAuth2 callback — no Navbar/Footer */}
+      <Route path="/oauth2/callback" element={<OAuth2CallbackPage />} />
 
       {/* Staff dashboard */}
       <Route path="/staff/*" element={

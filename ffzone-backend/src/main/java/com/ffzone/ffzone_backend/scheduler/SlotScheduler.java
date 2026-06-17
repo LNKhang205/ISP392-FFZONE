@@ -1,8 +1,9 @@
 package com.ffzone.ffzone_backend.scheduler;
 
-import com.ffzone.ffzone_backend.service.FieldSlotService;
+import com.ffzone.ffzone_backend.service.SlotGeneratorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -10,38 +11,41 @@ import java.time.LocalDate;
 
 @Slf4j
 @Component
+@EnableScheduling
 @RequiredArgsConstructor
 public class SlotScheduler {
 
-    private final FieldSlotService slotService;
+    private final SlotGeneratorService slotGeneratorService;  // thay FieldSlotService
 
-    /**
-     * Chạy mỗi ngày lúc 00:05 — generate slots cho 7 ngày tới.
-     */
-    @Scheduled(cron = "0 5 0 * * *")
-    public void generateSlotsForNextDays() {
-        log.info("=== [SlotScheduler] Generate slots hàng ngày ===");
-        generateNext7Days();
+    /** Mỗi ngày 00:05 GMT+7 — generate ngày mới nhất (today+6). */
+    @Scheduled(cron = "0 5 0 * * *", zone = "Asia/Ho_Chi_Minh")
+    public void generateDailySlots() {
+        LocalDate targetDate = LocalDate.now().plusDays(6);
+        log.info("=== [SlotScheduler] Cron daily: generate slots ngày {} ===", targetDate);
+        try {
+            slotGeneratorService.generateForAllFields(targetDate);
+        } catch (Exception e) {
+            log.error("[SlotScheduler] Lỗi generate ngày {}: {}", targetDate, e.getMessage());
+        }
     }
 
     /**
-     * Chạy 5 giây sau khi backend khởi động — đảm bảo luôn có slot.
+     * 3 giây sau khi backend khởi động — generate đủ 7 ngày.
+     * Loop ngoài, mỗi ngày là 1 batch tx nhỏ → không giữ connection pool.
      */
-    @Scheduled(initialDelay = 5000, fixedDelay = Long.MAX_VALUE)
+    @Scheduled(initialDelay = 3000, fixedDelay = Long.MAX_VALUE)
     public void generateOnStartup() {
         log.info("=== [SlotScheduler] Startup: generate slots 7 ngày tới ===");
-        generateNext7Days();
-    }
-
-    private void generateNext7Days() {
         LocalDate today = LocalDate.now();
         for (int i = 0; i < 7; i++) {
             LocalDate date = today.plusDays(i);
             try {
-                slotService.generateSlotsForAllFields(date);
+                slotGeneratorService.generateForAllFields(date);
+                log.info("[SlotScheduler] Xong ngày {}", date);
             } catch (Exception e) {
-                log.error("Lỗi generate slot ngày {}: {}", date, e.getMessage());
+                log.error("[SlotScheduler] Lỗi ngày {}: {}", date, e.getMessage());
             }
         }
+        log.info("=== [SlotScheduler] Startup xong ===");
     }
 }

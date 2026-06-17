@@ -206,6 +206,7 @@ CREATE TABLE IF NOT EXISTS field_slots (
     slot_date  DATE        NOT NULL,
     start_time TIME        NOT NULL,
     end_time   TIME        NOT NULL,
+    price      NUMERIC(12,0) NOT NULL DEFAULT 0,
     status     slot_status NOT NULL DEFAULT 'AVAILABLE',
     version    INT         NOT NULL DEFAULT 0,
     created_at TIMESTAMP   NOT NULL DEFAULT NOW(),
@@ -492,8 +493,20 @@ BEGIN
             FOREACH off IN ARRAY offsets LOOP
                 slot_start := ('05:00'::TIME + (off * INTERVAL '1 minute'));
                 slot_end   := slot_start + INTERVAL '60 minutes';
-                INSERT INTO field_slots (field_id, slot_date, start_time, end_time, status)
-                VALUES (f.id, d, slot_start, slot_end, 'AVAILABLE')
+                INSERT INTO field_slots (field_id, slot_date, start_time, end_time, price, status)
+                VALUES (
+                    f.id,
+                    d,
+                    slot_start,
+                    slot_end,
+                    CASE
+                        WHEN EXTRACT(ISODOW FROM d) IN (6, 7) THEN
+                            CEIL((CASE f.type WHEN '7V7' THEN 240000 WHEN '9V9' THEN 300000 ELSE 200000 END) * 1.25)
+                        ELSE
+                            CASE f.type WHEN '7V7' THEN 240000 WHEN '9V9' THEN 300000 ELSE 200000 END
+                    END,
+                    'AVAILABLE'
+                )
                 ON CONFLICT (field_id, slot_date, start_time) DO NOTHING;
             END LOOP;
         END LOOP;
