@@ -47,6 +47,9 @@ function minutesBetween(a, b) {
 }
 
 // FIX Bug 3: kiểm tra slot đã qua giờ hiện tại chưa
+// Slot bị coi là "đã qua" ngay khi giờ hiện tại >= giờ BẮT ĐẦU slot
+// (trước đây so theo giờ KẾT THÚC = start + 60p, khiến slot 22:30 vẫn
+// chọn được lúc 23:00 vì 22:30+60=23:30 > 23:00 — sai vì slot đã bắt đầu rồi)
 function isSlotPast(slotStartTime, selDate) {
   const now = new Date()
   const todayIso = now.toISOString().split('T')[0]
@@ -55,7 +58,7 @@ function isSlotPast(slotStartTime, selDate) {
   const [h, m] = slotStartTime.split(':').map(Number)
   const slotMinutes = h * 60 + m
   const nowMinutes = now.getHours() * 60 + now.getMinutes()
-  return slotMinutes + SLOT_PLAY <= nowMinutes
+  return slotMinutes <= nowMinutes
 }
 
 function calcSummary(slots) {

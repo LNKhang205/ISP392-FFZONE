@@ -1,6 +1,6 @@
 package com.ffzone.ffzone_backend.entity;
 
-import com.ffzone.ffzone_backend.enums.ServiceType;
+import com.ffzone.ffzone_backend.enums.ServiceCategory;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -21,9 +21,11 @@ public class Service {
     @Column(nullable = false, length = 100)
     private String name;
 
+    // Danh mục dịch vụ — nhiều Service được phép cùng 1 category
+    // (KHÔNG unique, khác bản trước chỉ cho 1 dịch vụ/loại)
     @Enumerated(EnumType.STRING)
-    @Column(name = "service_type", nullable = false, length = 20, unique = true)
-    private ServiceType serviceType;
+    @Column(nullable = false, length = 20)
+    private ServiceCategory category;
 
     @Column(columnDefinition = "TEXT")
     private String description;
@@ -43,3 +45,4 @@ public class Service {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 }
+

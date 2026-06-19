@@ -155,6 +155,7 @@
 .timelineRow {
   border-bottom: 1px solid #f1f5f9;
   transition: background .1s;
+  background: #fff;
 }
 .timelineRow:last-child { border-bottom: none; }
 .timelineRow:hover { background: #fafff7; }
@@ -164,7 +165,7 @@
   display: flex; flex-direction: column; justify-content: center; gap: 6px;
   padding: 14px 16px;
   position: sticky; left: 0; z-index: 3;
-  background: inherit;
+  background: #fff;;
   border-right: 2px solid #f1f5f9;
   min-width: 190px;
 }

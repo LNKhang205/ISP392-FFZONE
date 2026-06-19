@@ -1,7 +1,7 @@
 package com.ffzone.ffzone_backend.dto.response;
 
 import com.ffzone.ffzone_backend.entity.Service;
-import com.ffzone.ffzone_backend.enums.ServiceType;
+import com.ffzone.ffzone_backend.enums.ServiceCategory;
 import lombok.Builder;
 import lombok.Data;
 
@@ -12,7 +12,7 @@ import java.util.UUID;
 public class ServiceResponse {
     private UUID id;
     private String name;
-    private ServiceType serviceType;
+    private ServiceCategory category;
     private String description;
     private BigDecimal price;
     private String imageUrl;
@@ -20,7 +20,7 @@ public class ServiceResponse {
 
     public static ServiceResponse from(Service s) {
         return ServiceResponse.builder()
-            .id(s.getId()).name(s.getName()).serviceType(s.getServiceType())
+            .id(s.getId()).name(s.getName()).category(s.getCategory())
             .description(s.getDescription()).price(s.getPrice())
             .imageUrl(s.getImageUrl()).isActive(s.getIsActive()).build();
     }

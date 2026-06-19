@@ -10,11 +10,13 @@ import RegisterPage from './pages/auth/RegisterPage'
 import OAuth2CallbackPage from './pages/auth/OAuth2CallbackPage'
 import NotFoundPage from './pages/public/NotFoundPage'
 import BookingPage from './pages/public/BookingPage'
+import ServicesPage from './pages/public/ServicesPage'
 import StaffDashboard from './pages/staff/StaffDashboard'
 import OwnerDashboard from './pages/owner/OwnerDashboard'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import ProfilePage from './pages/user/ProfilePage'
 import ChangePasswordPage from './pages/user/ChangePasswordPage'
+import CartPage from './pages/user/CartPage'
 
 function RequireAuth({ children }) {
   const { isLoggedIn } = useAuth()
@@ -49,10 +51,18 @@ export default function App() {
       <Route path="/fields" element={<PublicLayout><FieldListPage /></PublicLayout>} />
       <Route path="/fields/:id" element={<PublicLayout><FieldDetailPage /></PublicLayout>} />
       <Route path="/booking" element={<PublicLayout><BookingPage /></PublicLayout>} />
+      <Route path="/services" element={<PublicLayout><ServicesPage /></PublicLayout>} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
 
-      {/* My Profile / Change Password — CUSTOMER (USER) only */}
+      {/* Cart — CUSTOMER only */}
+      <Route path="/cart" element={
+        <RequireRole roles={['USER']}>
+          <PublicLayout><CartPage /></PublicLayout>
+        </RequireRole>
+      } />
+
+      {/* My Profile / Change Password — CUSTOMER only */}
       <Route path="/profile" element={
         <RequireRole roles={['USER']}>
           <PublicLayout><ProfilePage /></PublicLayout>

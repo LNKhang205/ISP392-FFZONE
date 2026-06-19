@@ -1,0 +1,114 @@
+.page { padding: 48px 0 64px; min-height: 60vh; }
+
+.top { margin-bottom: 32px; }
+.top h1 { font-size: 28px; font-weight: 700; }
+.top p  { color: var(--gray-500); margin-top: 4px; }
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 32px;
+  align-items: center;
+}
+
+.filterBtn {
+  padding: 8px 20px;
+  border-radius: 999px;
+  border: 2px solid var(--gray-200, #e5e7eb);
+  background: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+  color: var(--gray-600, #4b5563);
+}
+.filterBtn:hover { border-color: var(--green, #22c55e); color: var(--green, #22c55e); }
+.filterActive {
+  background: var(--green, #22c55e);
+  border-color: var(--green, #22c55e);
+  color: #fff;
+}
+
+.cartBadge {
+  margin-left: auto;
+  padding: 8px 18px;
+  background: #fff7ed;
+  border: 2px solid #fb923c;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #c2410c;
+  text-decoration: none;
+  transition: background .15s;
+}
+.cartBadge:hover { background: #ffedd5; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.skeleton {
+  height: 300px;
+  background: var(--gray-100, #f3f4f6);
+  border-radius: 12px;
+  animation: shimmer 1.5s infinite;
+}
+@keyframes shimmer {
+  0%,100% { opacity: 1 } 50% { opacity: .5 }
+}
+
+.card { cursor: default; }
+.imgWrap {
+  aspect-ratio: 16/9;
+  overflow: hidden;
+  position: relative;
+}
+.imgWrap img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transition: transform .3s;
+}
+.card:hover .imgWrap img { transform: scale(1.05); }
+
+.catBadge { position: absolute; top: 12px; left: 12px; }
+
+.cardBody { padding: 18px; }
+.cardName { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.cardDesc {
+  font-size: 13px;
+  color: var(--gray-500, #6b7280);
+  margin-bottom: 14px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cardFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.price {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--green-dark, #16a34a);
+}
+
+.addBtn { min-width: 120px; }
+
+.empty {
+  text-align: center;
+  padding: 80px;
+  color: var(--gray-400, #9ca3af);
+}
+.empty span { font-size: 64px; display: block; margin-bottom: 16px; }
+
+@media (max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .grid { grid-template-columns: 1fr; } }

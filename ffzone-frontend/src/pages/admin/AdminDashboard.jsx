@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import api from '../../services/api'
 import styles from './AdminDashboard.module.css'
 import FieldManagement from './FieldManagement'
+import ServiceManagement from './ServiceManagement'
 
 /* ── Sidebar ── */
 function Sidebar({ onLogout }) {
@@ -423,74 +424,6 @@ function VoucherManagement() {
   )
 }
 
-/* ── Service Admin ── */
-function ServiceAdmin() {
-  const [services, setServices] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState({ name: '', price: '', serviceType: 'FOOD', description: '' })
-  const [msg, setMsg] = useState('')
-
-  const load = () => {
-    setLoading(true)
-    api.get('/services').then(r => setServices(r.data)).catch(() => {}).finally(() => setLoading(false))
-  }
-  useEffect(load, [])
-
-  const save = async () => {
-    setMsg('')
-    try {
-      await api.post('/services', { ...form, price: Number(form.price) })
-      setMsg('✅ Đã thêm dịch vụ')
-      setForm({ name: '', price: '', serviceType: 'FOOD', description: '' })
-      load()
-    } catch (e) { setMsg('❌ ' + (e.response?.data?.message || 'Lỗi')) }
-  }
-
-  const del = async (s) => {
-    if (!window.confirm(`Xóa dịch vụ "${s.name}"?`)) return
-    try { await api.delete(`/services/${s.id}`); load() }
-    catch (e) { alert('Không thể xóa') }
-  }
-
-  const columns = [
-    { key: 'name', label: 'Tên dịch vụ' },
-    { key: 'serviceType', label: 'Loại' },
-    { key: 'price', label: 'Giá', render: r => r.price?.toLocaleString('vi-VN') + '₫' },
-    { key: 'isActive', label: 'Trạng thái', render: r => r.isActive ? '✅ Hoạt động' : '❌ Ẩn' },
-  ]
-
-  return (
-    <div className={styles.page}>
-      <h1>Quản lý dịch vụ</h1>
-      <div className={styles.card}>
-        <h2>Thêm dịch vụ mới</h2>
-        <div className={styles.formGrid}>
-          <input className={styles.input} placeholder="Tên dịch vụ" value={form.name}
-            onChange={e => setForm(f => ({...f, name: e.target.value}))} />
-          <input type="number" className={styles.input} placeholder="Giá (₫)" value={form.price}
-            onChange={e => setForm(f => ({...f, price: e.target.value}))} />
-          <select className={styles.select} value={form.serviceType}
-            onChange={e => setForm(f => ({...f, serviceType: e.target.value}))}>
-            <option value="FOOD">Đồ ăn</option>
-            <option value="DRINK">Đồ uống</option>
-            <option value="EQUIPMENT">Thiết bị</option>
-            <option value="OTHER">Khác</option>
-          </select>
-          <input className={styles.input} placeholder="Mô tả" value={form.description}
-            onChange={e => setForm(f => ({...f, description: e.target.value}))} />
-        </div>
-        <div className={styles.formActions}>
-          <button onClick={save} className={styles.btnPrimary}>+ Thêm</button>
-        </div>
-        {msg && <p className={styles.msg}>{msg}</p>}
-      </div>
-      {loading ? <p className={styles.loading}>Đang tải...</p> : (
-        <CrudTable columns={columns} rows={services} onDelete={del} />
-      )}
-    </div>
-  )
-}
-
 /* ── Main AdminDashboard ── */
 export default function AdminDashboard() {
   const { user, logout } = useAuth()
@@ -516,7 +449,7 @@ export default function AdminDashboard() {
             <Route path="fields"   element={<FieldManagement />} />
             <Route path="pricings" element={<PricingManagement />} />
             <Route path="vouchers" element={<VoucherManagement />} />
-            <Route path="services" element={<ServiceAdmin />} />
+            <Route path="services" element={<ServiceManagement />} />
           </Routes>
         </div>
       </div>
