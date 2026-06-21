@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Routes, Route, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../services/api'
+import { getPendingRefunds, getAllRefunds, completeRefund, rejectRefund } from '../../api/refundApi'
 import styles from './StaffDashboard.module.css'
 
 /* ── Sidebar ── */
@@ -11,6 +12,7 @@ function Sidebar({ onLogout }) {
     { to: '/staff/bookings', label: '📅 Quản lý booking' },
     { to: '/staff/services', label: '🛒 Dịch vụ tại sân' },
     { to: '/staff/checkin',  label: '✅ Check-in'         },
+    { to: '/staff/refunds',  label: '💰 Hoàn tiền'        },
   ]
   return (
     <aside className={styles.sidebar}>
@@ -140,10 +142,13 @@ function BookingManagement() {
     : bookings.filter(b => b.status === filter)
 
   const statusColor = {
-    PENDING:   { bg: '#fef9c3', text: '#854d0e' },
-    CONFIRMED: { bg: '#dcfce7', text: '#166534' },
-    EXPIRED:   { bg: '#f3f4f6', text: '#6b7280' },
-    CANCELLED: { bg: '#fee2e2', text: '#991b1b' },
+    PENDING_PAYMENT: { bg: '#fef9c3', text: '#854d0e' },
+    CONFIRMED:       { bg: '#dcfce7', text: '#166534' },
+    IN_PROGRESS:     { bg: '#ede9fe', text: '#6d28d9' },
+    COMPLETED:       { bg: '#dbeafe', text: '#1d4ed8' },
+    CANCELLED:       { bg: '#fee2e2', text: '#991b1b' },
+    REFUND_PENDING:  { bg: '#fef9c3', text: '#854d0e' },
+    REFUNDED:        { bg: '#f3f4f6', text: '#6b7280' },
   }
 
   return (
@@ -151,7 +156,7 @@ function BookingManagement() {
       <div className={styles.pageHeader}>
         <h1>Quản lý Booking</h1>
         <div className={styles.filterTabs}>
-          {['ALL','PENDING','CONFIRMED','EXPIRED','CANCELLED'].map(s => (
+          {['ALL','PENDING_PAYMENT','CONFIRMED','IN_PROGRESS','COMPLETED','CANCELLED'].map(s => (
             <button
               key={s}
               onClick={() => setFilter(s)}
@@ -183,13 +188,14 @@ function BookingManagement() {
             <tbody>
               {filtered.map(b => {
                 const c = statusColor[b.status] || { bg: '#f9fafb', text: '#111' }
+                const firstSlot = b.slots?.[0]
                 return (
                   <tr key={b.id}>
-                    <td className={styles.monoId}>#{String(b.id).slice(-6)}</td>
-                    <td>{b.customerName || '—'}</td>
+                    <td className={styles.monoId}>{b.bookingCode}</td>
+                    <td>{b.accountName || '—'}</td>
                     <td>{b.fieldName || '—'}</td>
-                    <td>{b.bookingDate || '—'}</td>
-                    <td>{b.totalAmount?.toLocaleString('vi-VN')}₫</td>
+                    <td>{firstSlot ? `${firstSlot.slotDate} ${String(firstSlot.startTime).substring(0,5)}` : '—'}</td>
+                    <td>{Number(b.totalAmount || 0).toLocaleString('vi-VN')}₫</td>
                     <td>
                       <span
                         className={styles.statusBadge}
@@ -330,16 +336,19 @@ function ServiceManagement() {
 }
 
 /* ── Trang: Check-in ── */
+// LƯU Ý: endpoint check-in/check-out (POST /api/bookings/{id}/checkin) CHƯA
+// được code ở backend — đây là phần UC18/UC19 còn thiếu (xem phần "Còn lại"
+// trong các trao đổi trước). Khi backend có endpoint thật, bỏ disabled bên dưới.
 function CheckIn() {
-  const [bookingId, setBookingId] = useState('')
+  const [bookingCode, setBookingCode] = useState('')
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
 
   const handleSearch = async () => {
-    if (!bookingId.trim()) return
+    if (!bookingCode.trim()) return
     setLoading(true); setResult(null)
     try {
-      const r = await api.get(`/bookings/${bookingId}`)
+      const r = await api.get(`/bookings/code/${bookingCode.trim().toUpperCase()}`)
       setResult({ ok: true, data: r.data })
     } catch (e) {
       setResult({ ok: false, msg: e.response?.data?.message || 'Không tìm thấy booking' })
@@ -350,10 +359,10 @@ function CheckIn() {
     if (!result?.data?.id) return
     try {
       await api.post(`/bookings/${result.data.id}/checkin`)
-      setResult(r => ({ ...r, data: { ...r.data, status: 'CHECKED_IN' } }))
+      setResult(r => ({ ...r, data: { ...r.data, status: 'IN_PROGRESS' } }))
       alert('✅ Check-in thành công!')
     } catch (e) {
-      alert('❌ ' + (e.response?.data?.message || 'Lỗi'))
+      alert('❌ ' + (e.response?.data?.message || 'Chức năng check-in chưa khả dụng'))
     }
   }
 
@@ -361,12 +370,12 @@ function CheckIn() {
     <div className={styles.page}>
       <h1>Check-in khách hàng</h1>
       <div className={styles.card}>
-        <p style={{ color: '#6b7280', marginBottom: 12 }}>Nhập mã booking để tìm kiếm và check-in:</p>
+        <p style={{ color: '#6b7280', marginBottom: 12 }}>Nhập mã đặt sân (VD: FFZ-20260620-1234) để tìm kiếm và check-in:</p>
         <div className={styles.formRow}>
           <input
-            placeholder="Nhập mã booking (ID)"
-            value={bookingId}
-            onChange={e => setBookingId(e.target.value)}
+            placeholder="Nhập mã đặt sân"
+            value={bookingCode}
+            onChange={e => setBookingCode(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSearch()}
             className={styles.input}
           />
@@ -379,18 +388,29 @@ function CheckIn() {
           <div className={styles.checkinResult}>
             {result.ok ? (
               <>
-                <div className={styles.infoRow}><span>Khách hàng:</span> <strong>{result.data.customerName}</strong></div>
+                <div className={styles.infoRow}><span>Mã đặt sân:</span> <strong>{result.data.bookingCode}</strong></div>
+                <div className={styles.infoRow}><span>Khách hàng:</span> <strong>{result.data.accountName}</strong></div>
                 <div className={styles.infoRow}><span>Sân:</span> <strong>{result.data.fieldName}</strong></div>
-                <div className={styles.infoRow}><span>Ngày:</span> <strong>{result.data.bookingDate}</strong></div>
+                <div className={styles.infoRow}>
+                  <span>Khung giờ:</span>
+                  <strong>
+                    {result.data.slots?.map(s => `${s.slotDate} ${String(s.startTime).substring(0,5)}`).join(', ') || '—'}
+                  </strong>
+                </div>
                 <div className={styles.infoRow}><span>Trạng thái:</span>
                   <span className={styles.statusBadge} style={{ background:'#dcfce7', color:'#166534' }}>
                     {result.data.status}
                   </span>
                 </div>
                 {result.data.status === 'CONFIRMED' && (
-                  <button onClick={handleCheckin} className={styles.btnPrimary} style={{ marginTop: 16 }}>
-                    ✅ Xác nhận Check-in
-                  </button>
+                  <>
+                    <button onClick={handleCheckin} className={styles.btnPrimary} style={{ marginTop: 16 }} disabled>
+                      ✅ Xác nhận Check-in
+                    </button>
+                    <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 6 }}>
+                      Chức năng check-in đang được hoàn thiện ở backend.
+                    </p>
+                  </>
                 )}
               </>
             ) : (
@@ -399,6 +419,142 @@ function CheckIn() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+/* ── Trang: Hoàn tiền ── */
+function RefundManagement() {
+  const [refunds, setRefunds] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState('PENDING')
+  const [busy, setBusy] = useState({})
+
+  const load = () => {
+    setLoading(true)
+    const fetcher = filter === 'PENDING' ? getPendingRefunds() : getAllRefunds()
+    fetcher
+      .then(setRefunds)
+      .catch(() => setRefunds([]))
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(load, [filter])
+
+  const filtered = filter === 'ALL' || filter === 'PENDING'
+    ? refunds
+    : refunds.filter(r => r.status === filter)
+
+  const statusColor = {
+    PENDING:   { bg: '#fef9c3', text: '#854d0e' },
+    COMPLETED: { bg: '#dcfce7', text: '#166534' },
+    REJECTED:  { bg: '#fee2e2', text: '#991b1b' },
+  }
+
+  const handleComplete = async (refund) => {
+    if (!window.confirm(`Xác nhận đã chuyển khoản ${Number(refund.refundAmount).toLocaleString('vi-VN')}₫ cho khách hàng ${refund.accountName}?`)) return
+    setBusy(b => ({ ...b, [refund.id]: true }))
+    try {
+      await completeRefund(refund.id, 'Đã chuyển khoản thủ công')
+      load()
+    } catch (e) {
+      alert('❌ ' + (e.response?.data?.message || 'Lỗi'))
+    } finally {
+      setBusy(b => ({ ...b, [refund.id]: false }))
+    }
+  }
+
+  const handleReject = async (refund) => {
+    const note = window.prompt('Lý do từ chối hoàn tiền:')
+    if (!note) return
+    setBusy(b => ({ ...b, [refund.id]: true }))
+    try {
+      await rejectRefund(refund.id, note)
+      load()
+    } catch (e) {
+      alert('❌ ' + (e.response?.data?.message || 'Lỗi'))
+    } finally {
+      setBusy(b => ({ ...b, [refund.id]: false }))
+    }
+  }
+
+  return (
+    <div className={styles.page}>
+      <div className={styles.pageHeader}>
+        <h1>Quản lý hoàn tiền</h1>
+        <div className={styles.filterTabs}>
+          {['PENDING', 'COMPLETED', 'REJECTED', 'ALL'].map(s => (
+            <button
+              key={s}
+              onClick={() => setFilter(s)}
+              className={`${styles.filterTab} ${filter === s ? styles.filterTabActive : ''}`}
+            >
+              {s === 'ALL' ? 'Tất cả' : s === 'PENDING' ? 'Chờ xử lý' : s === 'COMPLETED' ? 'Đã hoàn tiền' : 'Đã từ chối'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {loading ? (
+        <p className={styles.loading}>Đang tải...</p>
+      ) : filtered.length === 0 ? (
+        <p className={styles.empty}>Không có yêu cầu hoàn tiền nào.</p>
+      ) : (
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Mã booking</th>
+                <th>Khách hàng</th>
+                <th>SĐT</th>
+                <th>% hoàn</th>
+                <th>Số tiền hoàn</th>
+                <th>Trạng thái</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(r => {
+                const c = statusColor[r.status] || { bg: '#f9fafb', text: '#111' }
+                return (
+                  <tr key={r.id}>
+                    <td className={styles.monoId}>{r.bookingCode}</td>
+                    <td>{r.accountName}</td>
+                    <td>{r.accountPhone || '—'}</td>
+                    <td>{r.refundPercent}%</td>
+                    <td><strong>{Number(r.refundAmount).toLocaleString('vi-VN')}₫</strong></td>
+                    <td>
+                      <span className={styles.statusBadge} style={{ background: c.bg, color: c.text }}>
+                        {r.status === 'PENDING' ? 'Chờ xử lý' : r.status === 'COMPLETED' ? 'Đã hoàn tiền' : 'Đã từ chối'}
+                      </span>
+                    </td>
+                    <td>
+                      {r.status === 'PENDING' && (
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button
+                            className={styles.btnPrimary}
+                            disabled={busy[r.id]}
+                            onClick={() => handleComplete(r)}
+                          >
+                            ✅ Đã chuyển khoản
+                          </button>
+                          <button
+                            className={styles.btnDanger}
+                            disabled={busy[r.id]}
+                            onClick={() => handleReject(r)}
+                          >
+                            Từ chối
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
@@ -426,6 +582,7 @@ export default function StaffDashboard() {
             <Route path="bookings" element={<BookingManagement />} />
             <Route path="services" element={<ServiceManagement />} />
             <Route path="checkin"  element={<CheckIn />} />
+            <Route path="refunds"  element={<RefundManagement />} />
           </Routes>
         </div>
       </div>

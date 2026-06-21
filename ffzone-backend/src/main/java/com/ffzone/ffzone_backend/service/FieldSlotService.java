@@ -73,6 +73,7 @@ public class FieldSlotService {
                 .stream().map(FieldSlotResponse::from).toList();
     }
 
+    @Transactional
     public FieldSlotResponse findById(UUID id) {
         return FieldSlotResponse.from(getOrThrow(id));
     }

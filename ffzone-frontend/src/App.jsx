@@ -17,6 +17,9 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import ProfilePage from './pages/user/ProfilePage'
 import ChangePasswordPage from './pages/user/ChangePasswordPage'
 import CartPage from './pages/user/CartPage'
+import BookingConfirmPage from './pages/public/BookingConfirmPage'
+import PaymentResultPage from './pages/public/PaymentResultPage'
+import MyBookingsPage from './pages/user/MyBookingsPage'
 
 function RequireAuth({ children }) {
   const { isLoggedIn } = useAuth()
@@ -54,6 +57,23 @@ export default function App() {
       <Route path="/services" element={<PublicLayout><ServicesPage /></PublicLayout>} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+
+      {/* Payment result — VNPay redirect trình duyệt về đây, không cần Navbar/Footer */}
+      <Route path="/payment-result" element={<PaymentResultPage />} />
+
+      {/* Booking confirm — CUSTOMER only (chọn voucher, dịch vụ, thanh toán) */}
+      <Route path="/booking/confirm" element={
+        <RequireRole roles={['USER']}>
+          <PublicLayout><BookingConfirmPage /></PublicLayout>
+        </RequireRole>
+      } />
+
+      {/* My bookings — CUSTOMER only */}
+      <Route path="/profile/bookings" element={
+        <RequireRole roles={['USER']}>
+          <PublicLayout><MyBookingsPage /></PublicLayout>
+        </RequireRole>
+      } />
 
       {/* Cart — CUSTOMER only */}
       <Route path="/cart" element={

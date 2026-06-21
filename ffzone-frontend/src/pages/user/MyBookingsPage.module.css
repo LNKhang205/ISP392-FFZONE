@@ -1,0 +1,87 @@
+.page { min-height: 100vh; padding: 28px 0 60px; background: #f8fafc; }
+.title { font-size: 24px; font-weight: 800; color: #0f172a; margin-bottom: 18px; }
+
+/* ── Tabs ─────────────────────────────────────────────── */
+.tabs { display: flex; gap: 6px; margin-bottom: 18px; overflow-x: auto; }
+.tab {
+  flex-shrink: 0; padding: 8px 16px; border-radius: 8px;
+  background: #fff; color: #64748b; border: 1.5px solid #e2e8f0;
+  font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s;
+}
+.tab:hover { border-color: #16a34a; color: #16a34a; }
+.tabActive { background: #16a34a; color: #fff; border-color: #16a34a; }
+
+/* ── Error ────────────────────────────────────────────── */
+.errorBox {
+  background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c;
+  border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 14px;
+}
+
+/* ── List ─────────────────────────────────────────────── */
+.list { display: flex; flex-direction: column; gap: 12px; }
+
+.bookingCard {
+  background: #fff; border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.07);
+  overflow: hidden;
+}
+
+.cardTop {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; cursor: pointer;
+}
+.cardTopLeft { display: flex; flex-direction: column; gap: 4px; }
+.bookingCode { font-size: 12px; font-weight: 700; color: #94a3b8; letter-spacing: .03em; }
+.fieldName { font-size: 15px; font-weight: 700; color: #0f172a; }
+
+.cardTopRight { display: flex; align-items: center; gap: 10px; }
+.chevron { color: #94a3b8; font-size: 12px; }
+
+.statusBadge {
+  padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;
+}
+.statusBadge.pending   { background: #fffbeb; color: #d97706; }
+.statusBadge.confirmed { background: #dbeafe; color: #2563eb; }
+.statusBadge.progress  { background: #ede9fe; color: #7c3aed; }
+.statusBadge.completed { background: #dcfce7; color: #16a34a; }
+.statusBadge.cancelled { background: #fee2e2; color: #dc2626; }
+
+/* ── Card body (expanded) ─────────────────────────────── */
+.cardBody { padding: 0 20px 18px; border-top: 1px solid #f1f5f9; }
+
+.slotGrid { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+.slotTag {
+  font-size: 12.5px; color: #334155; background: #f0fdf4;
+  border: 1px solid #bbf7d0; border-radius: 8px; padding: 5px 10px;
+}
+
+.amountGrid { display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; color: #475569; }
+.amountGrid > div { display: flex; justify-content: space-between; }
+.totalLine {
+  font-size: 15px; font-weight: 800; color: #0f172a;
+  border-top: 1px solid #e2e8f0; padding-top: 8px; margin-top: 4px;
+}
+
+.note { font-size: 13px; color: #64748b; margin-top: 12px; }
+
+.actions { display: flex; gap: 10px; margin-top: 16px; }
+.cancelBtn {
+  padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+  background: #fff; color: #dc2626; border: 1.5px solid #fecaca; cursor: pointer;
+}
+.cancelBtn:hover { background: #fef2f2; }
+.cancelBtn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── Loading / empty ──────────────────────────────────── */
+.loadingWrap { display: flex; flex-direction: column; align-items: center; padding: 80px 0; gap: 12px; color: #64748b; }
+.spinner {
+  width: 36px; height: 36px; border: 3px solid #e2e8f0; border-top-color: #16a34a;
+  border-radius: 50%; animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.empty {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 80px 0; color: #64748b;
+}
+.empty span { font-size: 48px; }

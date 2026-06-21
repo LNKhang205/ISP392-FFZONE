@@ -52,6 +52,12 @@ public class SecurityConfig {
  
                 // GET field-pricings là public (BookingPage dùng để tính giá)
                 .requestMatchers(HttpMethod.GET, "/api/field-pricings/**").permitAll()
+
+                // ── VNPay callback — PHẢI public vì VNPay server/browser gọi vào,
+                // không mang JWT token của hệ thống. Bảo mật ở đây dựa vào
+                // vnp_SecureHash (HMAC-SHA512) được verify bên trong PaymentService.
+                .requestMatchers("/api/payments/vnpay-return").permitAll()
+                .requestMatchers("/api/payments/vnpay-ipn").permitAll()
  
                 // ── Self-service profile (mọi role đã đăng nhập) ──────────
                 .requestMatchers(HttpMethod.PUT, "/api/accounts/me/profile").authenticated()
@@ -86,6 +92,12 @@ public class SecurityConfig {
  
                 // ── Booking services — user đã login ──────────────────────
                 .requestMatchers("/api/bookings/**").authenticated()
+
+                // ── Payment — tạo URL cần login; vnpay-return/ipn đã permitAll ở trên ──
+                .requestMatchers("/api/payments/**").authenticated()
+
+                // ── Refund — chỉ Staff/Owner/IT_Admin xử lý (BR-51, BR-57) ────
+                .requestMatchers("/api/refunds/**").hasAnyRole("STAFF", "OWNER", "IT_ADMIN")
  
                 // ── Còn lại phải login ────────────────────────────────────
                 .anyRequest().authenticated()
