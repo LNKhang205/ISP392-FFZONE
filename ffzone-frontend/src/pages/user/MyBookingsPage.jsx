@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { getMyBookings, cancelBooking } from '../../api/bookingApi'
+import { getMyBookings, cancelBooking, addServicesAtVenue } from '../../api/bookingApi'
 import { createPaymentUrl } from '../../api/paymentApi'
+import { getActiveServices } from '../../api/serviceApi'
+import { getMyVouchers } from '../../api/voucherApi'
 import styles from './MyBookingsPage.module.css'
 
 const STATUS_LABEL = {
@@ -18,6 +20,7 @@ const FILTER_TABS = [
   { key: 'ALL', label: 'Tất cả' },
   { key: 'PENDING_PAYMENT', label: 'Chờ thanh toán' },
   { key: 'CONFIRMED', label: 'Đã xác nhận' },
+  { key: 'IN_PROGRESS', label: 'Đang diễn ra' },
   { key: 'COMPLETED', label: 'Hoàn thành' },
   { key: 'CANCELLED', label: 'Đã hủy' },
 ]
@@ -34,6 +37,75 @@ export default function MyBookingsPage() {
   const [expandedId, setExpandedId] = useState(null)
   const [busy, setBusy] = useState({})
   const [msg, setMsg] = useState('')
+
+  // ── Modal đặt dịch vụ tại sân ──
+  const [venueModal, setVenueModal] = useState(null) // bookingId | null
+  const [allServices, setAllServices] = useState([])
+  const [myVouchers, setMyVouchers] = useState([])
+  const [venueQty, setVenueQty] = useState({}) // { serviceId: qty }
+  const [venueVoucher, setVenueVoucher] = useState(null) // selected UserVoucherResponse
+  const [venueLoading, setVenueLoading] = useState(false)
+  const [venueSubmitting, setVenueSubmitting] = useState(false)
+  const [venueError, setVenueError] = useState('')
+
+  const openVenueModal = async (bookingId) => {
+    setVenueModal(bookingId)
+    setVenueQty({})
+    setVenueVoucher(null)
+    setVenueError('')
+    setVenueLoading(true)
+    try {
+      const [svcs, vouchers] = await Promise.all([
+        getActiveServices(),
+        getMyVouchers(),
+      ])
+      setAllServices(svcs)
+      const now = new Date()
+      setMyVouchers(vouchers.filter(v => !v.isUsed && new Date(v.endDate) > now))
+    } catch {
+      setVenueError('Không thể tải dữ liệu. Vui lòng thử lại.')
+    } finally {
+      setVenueLoading(false)
+    }
+  }
+
+  const venueItems = useMemo(() =>
+    Object.entries(venueQty)
+      .filter(([, q]) => q > 0)
+      .map(([serviceId, quantity]) => ({ serviceId, quantity })),
+    [venueQty]
+  )
+
+  const venueSubtotal = useMemo(() => {
+    return Object.entries(venueQty).reduce((sum, [serviceId, qty]) => {
+      const svc = allServices.find(s => s.id === serviceId)
+      return sum + (svc ? Number(svc.price) * qty : 0)
+    }, 0)
+  }, [venueQty, allServices])
+
+  const venueDiscount = useMemo(() => {
+    if (!venueVoucher) return 0
+    if (venueVoucher.voucherType === 'PERCENT')
+      return Math.round(venueSubtotal * Number(venueVoucher.discountValue) / 100)
+    return Math.min(Number(venueVoucher.discountValue), venueSubtotal)
+  }, [venueVoucher, venueSubtotal])
+
+  const handleVenueSubmit = async () => {
+    if (venueItems.length === 0) { setVenueError('Vui lòng chọn ít nhất 1 dịch vụ.'); return }
+    setVenueSubmitting(true)
+    setVenueError('')
+    try {
+      const result = await addServicesAtVenue(venueModal, venueItems, venueVoucher?.code ?? null)
+      // Tạo payment URL cho phần tiền dịch vụ mới
+      const payment = await createPaymentUrl(result.bookingId)
+      setVenueModal(null)
+      window.location.href = payment.paymentUrl
+    } catch (err) {
+      setVenueError(err.response?.data?.message || 'Không thể xử lý. Vui lòng thử lại.')
+    } finally {
+      setVenueSubmitting(false)
+    }
+  }
 
   const load = () => {
     setLoading(true)
@@ -76,8 +148,10 @@ export default function MyBookingsPage() {
 
   const canCancel = (status) => status === 'PENDING_PAYMENT' || status === 'CONFIRMED'
   const canPayAgain = (status) => status === 'PENDING_PAYMENT'
+  const canAddVenueService = (status) => status === 'CONFIRMED' || status === 'IN_PROGRESS'
 
   return (
+    <>
     <div className={styles.page}>
       <div className="container">
         <h1 className={styles.title}>📋 Đơn đặt sân của tôi</h1>
@@ -160,6 +234,15 @@ export default function MyBookingsPage() {
                             💳 Thanh toán ngay
                           </button>
                         )}
+                        {canAddVenueService(b.status) && (
+                          <button
+                            className={styles.venueServiceBtn}
+                            disabled={busy[b.id]}
+                            onClick={() => openVenueModal(b.id)}
+                          >
+                            ➕ Đặt thêm dịch vụ
+                          </button>
+                        )}
                         {canCancel(b.status) && (
                           <button
                             className={styles.cancelBtn}
@@ -179,5 +262,104 @@ export default function MyBookingsPage() {
         )}
       </div>
     </div>
+
+      {/* ── Modal đặt thêm dịch vụ tại sân ── */}
+      {venueModal && (
+        <div className={styles.modalOverlay} onClick={() => !venueSubmitting && setVenueModal(null)}>
+          <div className={styles.modalBox} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2>➕ Đặt thêm dịch vụ tại sân</h2>
+              <button className={styles.modalClose} onClick={() => !venueSubmitting && setVenueModal(null)}>✕</button>
+            </div>
+
+            {venueError && <div className={styles.venueError}>⚠️ {venueError}</div>}
+
+            {venueLoading ? (
+              <div className={styles.venueLoading}><div className={styles.spinner} /><p>Đang tải...</p></div>
+            ) : (
+              <>
+                {/* Danh sách dịch vụ */}
+                <div className={styles.modalSection}>
+                  <h3 className={styles.modalSectionTitle}>🛒 Chọn dịch vụ</h3>
+                  <div className={styles.venueServiceList}>
+                    {allServices.map(svc => {
+                      const qty = venueQty[svc.id] || 0
+                      return (
+                        <div key={svc.id} className={styles.venueServiceRow}>
+                          <div className={styles.venueServiceInfo}>
+                            <span className={styles.venueServiceName}>{svc.name}</span>
+                            <span className={styles.venueServicePrice}>{Number(svc.price).toLocaleString('vi-VN')}₫</span>
+                          </div>
+                          <div className={styles.qtyControl}>
+                            <button onClick={() => setVenueQty(q => ({ ...q, [svc.id]: Math.max(0, (q[svc.id] || 0) - 1) }))}>−</button>
+                            <span>{qty}</span>
+                            <button onClick={() => setVenueQty(q => ({ ...q, [svc.id]: (q[svc.id] || 0) + 1 }))}>+</button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Chọn voucher */}
+                <div className={styles.modalSection}>
+                  <h3 className={styles.modalSectionTitle}>🎟️ Voucher (tùy chọn)</h3>
+                  {myVouchers.length === 0 ? (
+                    <p className={styles.venueHint}>Bạn không có voucher nào còn hiệu lực.</p>
+                  ) : (
+                    <div className={styles.venueVoucherList}>
+                      {myVouchers.map(v => {
+                        const selected = venueVoucher?.id === v.id
+                        return (
+                          <div
+                            key={v.id}
+                            className={`${styles.venueVoucherItem} ${selected ? styles.venueVoucherSelected : ''}`}
+                            onClick={() => setVenueVoucher(selected ? null : v)}
+                          >
+                            <div>
+                              <span className={styles.venueVoucherCode}>{v.code}</span>
+                              <span className={styles.venueVoucherDiscount}>
+                                {v.voucherType === 'PERCENT' ? ` — Giảm ${v.discountValue}%` : ` — Giảm ${Number(v.discountValue).toLocaleString('vi-VN')}₫`}
+                              </span>
+                            </div>
+                            {selected && <span className={styles.voucherCheck}>✓</span>}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Tóm tắt */}
+                <div className={styles.venueSummary}>
+                  <div className={styles.venueSummaryRow}>
+                    <span>Tạm tính dịch vụ</span>
+                    <span>{venueSubtotal.toLocaleString('vi-VN')}₫</span>
+                  </div>
+                  {venueDiscount > 0 && (
+                    <div className={styles.venueSummaryRow} style={{ color: '#16a34a' }}>
+                      <span>Giảm giá ({venueVoucher.code})</span>
+                      <span>- {venueDiscount.toLocaleString('vi-VN')}₫</span>
+                    </div>
+                  )}
+                  <div className={`${styles.venueSummaryRow} ${styles.venueSummaryTotal}`}>
+                    <span>Thanh toán</span>
+                    <span>{Math.max(0, venueSubtotal - venueDiscount).toLocaleString('vi-VN')}₫</span>
+                  </div>
+                </div>
+
+                <button
+                  className={`btn btn-primary ${styles.venueSubmitBtn}`}
+                  disabled={venueSubmitting || venueItems.length === 0}
+                  onClick={handleVenueSubmit}
+                >
+                  {venueSubmitting ? 'Đang xử lý...' : '💳 Xác nhận & Thanh toán VNPay'}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   )
 }

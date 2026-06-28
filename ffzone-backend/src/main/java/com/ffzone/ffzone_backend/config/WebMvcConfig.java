@@ -17,6 +17,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Value("${app.upload.avatars-dir:uploads/avatars}")
     private String avatarsDir;
 
+    @Value("${app.upload.service-images-dir:uploads/service-images}")
+    private String serviceImagesDir;
+
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         Path uploadDir = Paths.get(fieldImagesDir).toAbsolutePath().normalize();
@@ -24,7 +27,6 @@ public class WebMvcConfig implements WebMvcConfigurer {
         if (!resourceLocation.endsWith("/")) {
             resourceLocation += "/";
         }
-
         registry.addResourceHandler("/uploads/field-images/**")
             .addResourceLocations(resourceLocation);
 
@@ -33,8 +35,15 @@ public class WebMvcConfig implements WebMvcConfigurer {
         if (!avatarResourceLocation.endsWith("/")) {
             avatarResourceLocation += "/";
         }
-
         registry.addResourceHandler("/uploads/avatars/**")
             .addResourceLocations(avatarResourceLocation);
+
+        Path serviceUploadDir = Paths.get(serviceImagesDir).toAbsolutePath().normalize();
+        String serviceResourceLocation = serviceUploadDir.toUri().toString();
+        if (!serviceResourceLocation.endsWith("/")) {
+            serviceResourceLocation += "/";
+        }
+        registry.addResourceHandler("/uploads/service-images/**")
+            .addResourceLocations(serviceResourceLocation);
     }
 }

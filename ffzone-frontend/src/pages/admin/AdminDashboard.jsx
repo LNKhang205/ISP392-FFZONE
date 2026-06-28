@@ -5,6 +5,7 @@ import api from '../../services/api'
 import styles from './AdminDashboard.module.css'
 import FieldManagement from './FieldManagement'
 import ServiceManagement from './ServiceManagement'
+import PricingManagement from './PricingManagement'
 
 /* ── Sidebar ── */
 function Sidebar({ onLogout }) {
@@ -272,91 +273,16 @@ function AccountManagement() {
 //   )
 // }
 
-/* ── Pricing Management ── */
-function PricingManagement() {
-  const [pricings, setPricings] = useState([])
-  const [fields, setFields] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState({ fieldId: '', dayType: 'WEEKDAY', startTime: '05:00', endTime: '23:00', price: '' })
-  const [msg, setMsg] = useState('')
-
-  const load = () => {
-    setLoading(true)
-    Promise.all([
-      api.get('/field-pricings'),
-      api.get('/fields'),
-    ]).then(([p, f]) => { setPricings(p.data); setFields(f.data) })
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }
-  useEffect(load, [])
-
-  const save = async () => {
-    setMsg('')
-    try {
-      await api.post('/field-pricings', { ...form, price: Number(form.price) })
-      setMsg('✅ Đã thêm giá sân')
-      setForm({ fieldId: '', dayType: 'WEEKDAY', startTime: '05:00', endTime: '23:00', price: '' })
-      load()
-    } catch (e) { setMsg('❌ ' + (e.response?.data?.message || 'Lỗi')) }
-  }
-
-  const del = async (p) => {
-    if (!window.confirm('Xóa giá này?')) return
-    try { await api.delete(`/field-pricings/${p.id}`); load() }
-    catch (e) { alert('Không thể xóa') }
-  }
-
-  const columns = [
-    { key: 'fieldName', label: 'Sân' },
-    { key: 'dayType', label: 'Loại ngày' },
-    { key: 'startTime', label: 'Giờ bắt đầu' },
-    { key: 'endTime', label: 'Giờ kết thúc' },
-    { key: 'price', label: 'Giá (₫)', render: r => r.price?.toLocaleString('vi-VN') + '₫' },
-  ]
-
-  return (
-    <div className={styles.page}>
-      <h1>Quản lý giá sân</h1>
-      <div className={styles.card}>
-        <h2>Thêm giá mới</h2>
-        <div className={styles.formGrid}>
-          <select className={styles.select} value={form.fieldId}
-            onChange={e => setForm(f => ({...f, fieldId: e.target.value}))}>
-            <option value="">-- Chọn sân --</option>
-            {fields.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-          </select>
-          <select className={styles.select} value={form.dayType}
-            onChange={e => setForm(f => ({...f, dayType: e.target.value}))}>
-            <option value="WEEKDAY">Ngày thường</option>
-            <option value="WEEKEND">Cuối tuần</option>
-            <option value="HOLIDAY">Lễ / Tết</option>
-          </select>
-          <input type="time" className={styles.input} value={form.startTime}
-            onChange={e => setForm(f => ({...f, startTime: e.target.value}))} />
-          <input type="time" className={styles.input} value={form.endTime}
-            onChange={e => setForm(f => ({...f, endTime: e.target.value}))} />
-          <input type="number" className={styles.input} placeholder="Giá (VNĐ)" value={form.price}
-            onChange={e => setForm(f => ({...f, price: e.target.value}))} />
-        </div>
-        <div className={styles.formActions}>
-          <button onClick={save} className={styles.btnPrimary}>+ Thêm giá</button>
-        </div>
-        {msg && <p className={styles.msg}>{msg}</p>}
-      </div>
-      {loading ? <p className={styles.loading}>Đang tải...</p> : (
-        <CrudTable columns={columns} rows={pricings} onDelete={del} />
-      )}
-    </div>
-  )
-}
 
 /* ── Voucher Management ── */
 function VoucherManagement() {
   const [vouchers, setVouchers] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState({ code: '', discountPercent: '', maxDiscount: '', quantity: '', expiredAt: '' })
-  const [msg, setMsg] = useState('')
+  const [loading, setLoading]   = useState(true)
+  const [msg, setMsg]           = useState('')
+  const [form, setForm]         = useState({
+    code: '', voucherType: 'PERCENT', discountValue: '',
+    quantity: '', startDate: '', endDate: ''
+  })
 
   const load = () => {
     setLoading(true)
@@ -366,33 +292,38 @@ function VoucherManagement() {
 
   const save = async () => {
     setMsg('')
+    if (!form.code || !form.discountValue || !form.quantity || !form.startDate || !form.endDate) {
+      setMsg('❌ Vui lòng điền đầy đủ thông tin'); return
+    }
     try {
       await api.post('/vouchers', {
-        ...form,
-        discountPercent: Number(form.discountPercent),
-        maxDiscount: Number(form.maxDiscount),
-        quantity: Number(form.quantity),
+        code:          form.code.toUpperCase(),
+        voucherType:   form.voucherType,
+        discountValue: Number(form.discountValue),
+        quantity:      Number(form.quantity),
+        startDate:     form.startDate,
+        endDate:       form.endDate,
       })
-      setMsg('✅ Đã tạo voucher')
-      setForm({ code: '', discountPercent: '', maxDiscount: '', quantity: '', expiredAt: '' })
+      setMsg('✅ Tạo voucher thành công')
+      setForm({ code: '', voucherType: 'PERCENT', discountValue: '', quantity: '', startDate: '', endDate: '' })
       load()
-    } catch (e) { setMsg('❌ ' + (e.response?.data?.message || 'Lỗi')) }
+    } catch (e) { setMsg('❌ ' + (e.response?.data?.message || 'Lỗi tạo voucher')) }
   }
 
-  const del = async (v) => {
-    if (!window.confirm(`Xóa voucher "${v.code}"?`)) return
+  const deactivate = async (v) => {
+    if (!window.confirm(`Vô hiệu hóa voucher "${v.code}"?`)) return
     try { await api.delete(`/vouchers/${v.id}`); load() }
-    catch (e) { alert('Không thể xóa') }
+    catch { alert('Không thể vô hiệu hóa') }
   }
 
   const columns = [
-    { key: 'code', label: 'Mã voucher' },
-    { key: 'discountPercent', label: 'Giảm (%)', render: r => r.discountPercent + '%' },
-    { key: 'maxDiscount', label: 'Tối đa (₫)', render: r => r.maxDiscount?.toLocaleString('vi-VN') + '₫' },
-    { key: 'quantity', label: 'SL' },
-    { key: 'usedCount', label: 'Đã dùng' },
-    { key: 'expiredAt', label: 'Hết hạn' },
-    { key: 'status', label: 'Trạng thái' },
+    { key: 'code',          label: 'Mã voucher' },
+    { key: 'voucherType',   label: 'Loại',       render: r => r.voucherType === 'PERCENT' ? 'Phần trăm' : 'Cố định' },
+    { key: 'discountValue', label: 'Giảm',        render: r => r.voucherType === 'PERCENT' ? r.discountValue + '%' : Number(r.discountValue).toLocaleString('vi-VN') + '₫' },
+    { key: 'remaining',     label: 'Còn lại',     render: r => `${r.remaining}/${r.quantity}` },
+    { key: 'startDate',     label: 'Bắt đầu',     render: r => new Date(r.startDate).toLocaleDateString('vi-VN') },
+    { key: 'endDate',       label: 'Kết thúc',    render: r => new Date(r.endDate).toLocaleDateString('vi-VN') },
+    { key: 'status',        label: 'Trạng thái',  render: r => r.status === 'ACTIVE' ? '🟢 Hoạt động' : '🔴 Đã tắt' },
   ]
 
   return (
@@ -401,24 +332,39 @@ function VoucherManagement() {
       <div className={styles.card}>
         <h2>Tạo voucher mới</h2>
         <div className={styles.formGrid}>
-          <input className={styles.input} placeholder="Mã voucher (VD: SUMMER20)" value={form.code}
-            onChange={e => setForm(f => ({...f, code: e.target.value.toUpperCase()}))} />
-          <input type="number" className={styles.input} placeholder="Giảm %" value={form.discountPercent}
-            onChange={e => setForm(f => ({...f, discountPercent: e.target.value}))} />
-          <input type="number" className={styles.input} placeholder="Giảm tối đa (₫)" value={form.maxDiscount}
-            onChange={e => setForm(f => ({...f, maxDiscount: e.target.value}))} />
-          <input type="number" className={styles.input} placeholder="Số lượng" value={form.quantity}
-            onChange={e => setForm(f => ({...f, quantity: e.target.value}))} />
-          <input type="datetime-local" className={styles.input} value={form.expiredAt}
-            onChange={e => setForm(f => ({...f, expiredAt: e.target.value}))} />
+          <input className={styles.input} placeholder="Mã voucher (VD: QUOCKHANH20)"
+            value={form.code} onChange={e => setForm(f => ({...f, code: e.target.value.toUpperCase()}))} />
+
+          <select className={styles.input} value={form.voucherType}
+            onChange={e => setForm(f => ({...f, voucherType: e.target.value}))}>
+            <option value="PERCENT">Giảm theo %</option>
+            <option value="FIXED">Giảm số tiền cố định (₫)</option>
+          </select>
+
+          <input type="number" className={styles.input}
+            placeholder={form.voucherType === 'PERCENT' ? 'Giảm % (VD: 20)' : 'Giảm (₫) (VD: 50000)'}
+            value={form.discountValue}
+            onChange={e => setForm(f => ({...f, discountValue: e.target.value}))} />
+
+          <input type="number" className={styles.input} placeholder="Số lượng voucher (VD: 50)"
+            value={form.quantity} onChange={e => setForm(f => ({...f, quantity: e.target.value}))} />
+
+          <input type="datetime-local" className={styles.input}
+            title="Ngày bắt đầu nhận voucher"
+            value={form.startDate} onChange={e => setForm(f => ({...f, startDate: e.target.value}))} />
+
+          <input type="datetime-local" className={styles.input}
+            title="Ngày hết hạn voucher"
+            value={form.endDate} onChange={e => setForm(f => ({...f, endDate: e.target.value}))} />
         </div>
         <div className={styles.formActions}>
           <button onClick={save} className={styles.btnPrimary}>+ Tạo voucher</button>
         </div>
         {msg && <p className={styles.msg}>{msg}</p>}
       </div>
+
       {loading ? <p className={styles.loading}>Đang tải...</p> : (
-        <CrudTable columns={columns} rows={vouchers} onDelete={del} />
+        <CrudTable columns={columns} rows={vouchers} onDelete={deactivate} />
       )}
     </div>
   )

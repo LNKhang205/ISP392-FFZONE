@@ -4,6 +4,7 @@ import com.ffzone.ffzone_backend.dto.request.AddToCartRequest;
 import com.ffzone.ffzone_backend.dto.response.BookingServiceResponse;
 import com.ffzone.ffzone_backend.entity.*;
 import com.ffzone.ffzone_backend.enums.BookingStatus;
+import com.ffzone.ffzone_backend.enums.VoucherType;
 import com.ffzone.ffzone_backend.exception.AppException;
 import com.ffzone.ffzone_backend.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.UUID;
 
@@ -160,6 +162,24 @@ public class BookingItemService {
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         booking.setServiceAmount(serviceTotal);
+
+        // Tính lại discount theo tổng đơn mới (field + service) nếu booking có voucher
+        // Fix bug: discount trước đây chỉ tính trên fieldAmount lúc tạo booking,
+        // sau khi thêm dịch vụ phải tính lại trên tổng mới.
+        if (booking.getVoucher() != null) {
+            Voucher v = booking.getVoucher();
+            BigDecimal orderTotal = booking.getFieldAmount().add(serviceTotal);
+            BigDecimal newDiscount;
+            if (v.getVoucherType() == VoucherType.PERCENT) {
+                newDiscount = orderTotal.multiply(v.getDiscountValue())
+                        .divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP);
+            } else {
+                newDiscount = v.getDiscountValue();
+            }
+            newDiscount = newDiscount.min(orderTotal); // cap tại tổng đơn
+            booking.setDiscountAmount(newDiscount);
+        }
+
         booking.setTotalAmount(
             booking.getFieldAmount()
                 .add(serviceTotal)

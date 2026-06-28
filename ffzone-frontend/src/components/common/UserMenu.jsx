@@ -73,11 +73,14 @@ export default function UserMenu() {
                 👤 My Profile
               </Link>
               <Link to="/profile/bookings" className={styles.item} onClick={() => setOpen(false)}>
-                📋 Đơn đặt sân của tôi
+                Đơn đặt sân của tôi
+              </Link>
+              <Link to="/my-vouchers" className={styles.item} onClick={() => setOpen(false)}>
+                Voucher của tôi
               </Link>
               {isLocal && (
                 <Link to="/profile/change-password" className={styles.item} onClick={() => setOpen(false)}>
-                  🔒 Change Password
+                  Change Password
                 </Link>
               )}
             </>

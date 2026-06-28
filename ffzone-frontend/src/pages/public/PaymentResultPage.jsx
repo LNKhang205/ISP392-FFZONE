@@ -80,7 +80,7 @@ export default function PaymentResultPage() {
               Sân: <strong>{booking.fieldName}</strong><br />
               Tổng tiền: <strong>{Number(booking.totalAmount).toLocaleString('vi-VN')}₫</strong>
             </p>
-            <Link to="/profile/bookings" className="btn btn-primary">Xem chi tiết đơn đặt sân</Link>
+            <Link to="/" className="btn btn-primary">Về trang chủ</Link>
           </>
         ) : (
           <>

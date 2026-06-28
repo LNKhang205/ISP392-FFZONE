@@ -95,10 +95,14 @@ export default function BookingPage() {
   const [loading,   setLoading]   = useState(true)
   const [collapsed, setCollapsed] = useState({})
   const [selected,  setSelected]  = useState([])
+  const [gapError,  setGapError]  = useState(false)
+  const [holidays,  setHolidays]  = useState([])  // danh sách ngày lễ đang/sắp áp dụng
 
   // Load fields
   useEffect(() => {
     api.get('/fields/active').then(r => setFields(r.data)).catch(() => {})
+    // Load holidays để hiển thị banner + ghi chú giá
+    api.get('/field-pricings/holidays/current').then(r => setHolidays(r.data)).catch(() => {})
   }, [])
 
   // Load slots
@@ -129,14 +133,29 @@ export default function BookingPage() {
     if (preFieldId) setFilterField(preFieldId)
   }, [preFieldId])
 
-  // FIX Bug 2: thêm fieldId vào slot khi toggle, và fix điều kiện canSelect
   const toggleSlot = useCallback((slot, fieldId) => {
     if (slot.status !== 'AVAILABLE') return
     if (isSlotPast(fmt(slot.startTime), selDate)) return
     const slotWithField = { ...slot, fieldId }
     setSelected(prev => {
       const exists = prev.find(s => s.id === slot.id)
-      if (exists) return prev.filter(s => s.id !== slot.id)
+      if (exists) {
+        // Kiểm tra nếu bỏ slot này thì các slot còn lại có bị cách nhau không
+        const remaining = prev.filter(s => s.id !== slot.id)
+        if (remaining.length > 1) {
+          const sorted = [...remaining].sort((a, b) => fmt(a.startTime).localeCompare(fmt(b.startTime)))
+          for (let i = 0; i < sorted.length - 1; i++) {
+            const expectedNext = addMinutes(fmt(sorted[i].startTime), SLOT_PLAY + SLOT_BREAK)
+            if (fmt(sorted[i + 1].startTime) !== expectedNext) {
+              // Các ca còn lại sẽ bị gián đoạn → không cho phép
+              setGapError(true)
+              setTimeout(() => setGapError(false), 3500)
+              return prev
+            }
+          }
+        }
+        return remaining
+      }
       if (prev.length > 0 && prev[0].fieldId !== fieldId) return prev
       if (prev.length >= MAX_SELECT) return prev
       const next = [...prev, slotWithField].sort((a, b) => fmt(a.startTime).localeCompare(fmt(b.startTime)))
@@ -185,6 +204,33 @@ export default function BookingPage() {
   const totalPrice = selected.reduce((sum, s) => sum + Number(s.price || 0), 0)
   const selectedDay = days.find(d => d.iso === selDate)
 
+  // Kiểm tra ngày đang chọn có phải cuối tuần/ngày lễ không
+  const isWeekend = (isoDate) => {
+    const d = new Date(isoDate)
+    return d.getDay() === 0 || d.getDay() === 6
+  }
+
+  const getHolidayForDate = (isoDate) => {
+    return holidays.find(h => {
+      return isoDate >= h.effectiveFrom && isoDate <= (h.effectiveTo || isoDate)
+    })
+  }
+
+  // Banner thông báo ngày lễ — chỉ những ngày lễ sắp tới / đang áp dụng
+  const upcomingHolidays = holidays.filter(h => {
+    const today = new Date().toISOString().split('T')[0]
+    return !h.effectiveTo || h.effectiveTo >= today
+  })
+
+  // Ghi chú giá cho ngày đang chọn
+  const selHoliday = getHolidayForDate(selDate)
+  const selIsWeekend = isWeekend(selDate)
+  const priceNote = selHoliday
+    ? { text: `🎉 Giá ngày lễ: ${selHoliday.holidayName}`, color: '#dc2626' }
+    : selIsWeekend
+    ? { text: '📅 Giá cuối tuần (×1.25)', color: '#d97706' }
+    : null
+
   return (
     <div className={styles.page}>
       {/* ── Header ─────────────────────────────────────── */}
@@ -196,6 +242,21 @@ export default function BookingPage() {
               <p className={styles.sub}>Chọn ngày, loại sân và khung giờ phù hợp</p>
             </div>
           </div>
+
+          {/* Banner thông báo ngày lễ */}
+          {upcomingHolidays.length > 0 && (
+            <div className={styles.holidayBanner}>
+              <span className={styles.holidayBannerIcon}>🎉</span>
+              <div className={styles.holidayBannerList}>
+                {upcomingHolidays.map((h, i) => (
+                  <span key={i} className={styles.holidayBannerItem}>
+                    <strong>{h.holidayName}</strong>: từ {h.effectiveFrom} đến {h.effectiveTo} — áp dụng giá ngày lễ
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className={styles.dateStrip}>
             {days.map(d => (
               <button
@@ -251,6 +312,18 @@ export default function BookingPage() {
             </button>
           </div>
         </div>
+
+        {/* ── Gap error toast ─────────────────────────── */}
+        {gapError && (
+          <div style={{
+            position: 'fixed', bottom: 100, left: '50%', transform: 'translateX(-50%)',
+            background: '#dc2626', color: '#fff', padding: '14px 28px', borderRadius: 12,
+            fontWeight: 700, fontSize: 15, zIndex: 9999, boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
+            display: 'flex', alignItems: 'center', gap: 10
+          }}>
+            ⚠️ Không thể bỏ ca ở giữa — các ca trong một đơn phải liền kề nhau!
+          </div>
+        )}
 
         {/* ── Legend ─────────────────────────────────────── */}
         <div className={styles.legend}>
@@ -394,6 +467,11 @@ export default function BookingPage() {
                 &nbsp;·&nbsp;{summary.count} slot · ⏱ {summary.durationLabel}
                 {summary.breakMins > 0 && <> · gồm {summary.breakMins} phút dọn sân</>}
               </div>
+              {priceNote && (
+                <div className={styles.summaryPriceNote} style={{ color: priceNote.color }}>
+                  {priceNote.text}
+                </div>
+              )}
             </div>
             <div className={styles.summaryRight}>
               <div className={styles.summaryPrice}>

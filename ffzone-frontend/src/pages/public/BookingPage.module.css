@@ -155,7 +155,6 @@
 .timelineRow {
   border-bottom: 1px solid #f1f5f9;
   transition: background .1s;
-  background: #fff;
 }
 .timelineRow:last-child { border-bottom: none; }
 .timelineRow:hover { background: #fafff7; }
@@ -165,7 +164,7 @@
   display: flex; flex-direction: column; justify-content: center; gap: 6px;
   padding: 14px 16px;
   position: sticky; left: 0; z-index: 3;
-  background: #fff;;
+  background: inherit;
   border-right: 2px solid #f1f5f9;
   min-width: 190px;
 }
@@ -282,7 +281,34 @@
   background: none; border: none; cursor: pointer; text-decoration: underline;
 }
 .summaryClear:hover { color: #fff; }
- 
+
+/* Ghi chú giá cuối tuần / ngày lễ trong summary */
+.summaryPriceNote {
+  font-size: 13px; font-weight: 700;
+  background: rgba(255,255,255,0.15);
+  padding: 4px 10px; border-radius: 6px;
+  margin-top: 6px; display: inline-block;
+}
+
+/* Banner thông báo ngày lễ phía trên date strip */
+.holidayBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(254,243,199,0.15);
+  border: 1px solid rgba(253,230,138,0.4);
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+}
+.holidayBannerIcon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.holidayBannerList { display: flex; flex-direction: column; gap: 4px; }
+.holidayBannerItem {
+  font-size: 13px;
+  color: #fef3c7;
+}
+.holidayBannerItem strong { color: #fde68a; }
+
 @media (max-width: 768px) {
   .title { font-size: 22px; }
   .filters { gap: 12px; }

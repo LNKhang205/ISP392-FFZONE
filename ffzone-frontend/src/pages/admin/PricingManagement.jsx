@@ -1,31 +1,46 @@
 import { useState, useEffect, useCallback } from 'react'
-import api from '../../../services/api'
+import api from '../../services/api'
 import styles from './PricingManagement.module.css'
 
-// ── Hằng số ───────────────────────────────────────────────────
-const TYPE_LABEL   = { '5V5': 'Sân 5 người', '7V7': 'Sân 7 người', '9V9': 'Sân 9 người' }
-const TYPE_OPTIONS = [
-  { value: '5V5', label: '⚽ Sân 5 người' },
-  { value: '7V7', label: '🏟️ Sân 7 người' },
-  { value: '9V9', label: '🏆 Sân 9 người' },
-]
+// ── Hằng số ─────────────────────────────────────────────────────
+// DEFAULT_PRICES removed — giá lấy từ DB thực tế
+const TYPE_LABEL = {
+  '5V5': 'Sân 5 người', '7V7': 'Sân 7 người', '9V9': 'Sân 9 người',
+  'FIVE_VS_FIVE': 'Sân 5 người', 'SEVEN_VS_SEVEN': 'Sân 7 người', 'NINE_VS_NINE': 'Sân 9 người',
+}
 
 function vnd(n) {
   if (n == null || n === '') return '—'
   return Number(n).toLocaleString('vi-VN') + '₫'
 }
-
 function calcWeekend(wd) {
   if (!wd) return null
   return Math.ceil((Number(wd) * 1.25) / 1000) * 1000
 }
-
 function todayStr() {
   return new Date().toISOString().split('T')[0]
 }
+function statusOf(from, to) {
+  const now = todayStr()
+  if (to && to < now) return 'expired'
+  if (from > now) return 'upcoming'
+  return 'active'
+}
+const STATUS_STYLE = {
+  active:   { background: '#dcfce7', color: '#166534' },
+  upcoming: { background: '#fef9c3', color: '#854d0e' },
+  expired:  { background: '#f3f4f6', color: '#6b7280' },
+}
+const STATUS_LABEL = { active: 'Đang áp dụng', upcoming: 'Sắp tới', expired: 'Đã hết hạn' }
 
-// ── Modal chung ───────────────────────────────────────────────
-function Modal({ title, onClose, children, wide }) {
+function normalizeType(t) {
+  if (!t) return ''
+  const m = { FIVE_VS_FIVE: '5V5', SEVEN_VS_SEVEN: '7V7', NINE_VS_NINE: '9V9' }
+  return m[t] || t
+}
+
+// ── Shared components ────────────────────────────────────────────
+function Modal({ title, wide, onClose, children }) {
   return (
     <div className={styles.overlay} onClick={e => e.target === e.currentTarget && onClose()}>
       <div className={`${styles.modal} ${wide ? styles.modalWide : ''}`}>
@@ -38,61 +53,111 @@ function Modal({ title, onClose, children, wide }) {
     </div>
   )
 }
+function FormGroup({ label, required, hint, children }) {
+  return (
+    <div className={styles.formGroup}>
+      <label>{label}{required && <span className={styles.req}> *</span>}</label>
+      {children}
+      {hint && <small className={styles.hint}>{hint}</small>}
+    </div>
+  )
+}
+function ModalFooter({ onCancel, onSave, saving, saveLabel = '💾 Lưu' }) {
+  return (
+    <div className={styles.modalFooter}>
+      <button className={styles.btnCancel} onClick={onCancel}>Hủy</button>
+      <button className={styles.btnGreen} onClick={onSave} disabled={saving}>
+        {saving ? '⏳ Đang lưu...' : saveLabel}
+      </button>
+    </div>
+  )
+}
 
 // ════════════════════════════════════════════════════════════════
 // TAB 1 — BẢNG GIÁ SÂN
 // ════════════════════════════════════════════════════════════════
 function TabFieldPricing({ fields }) {
-  const [pricings, setPricings] = useState([])
-  const [loading, setLoading]   = useState(true)
-  const [modal, setModal]       = useState(null)  // null | { mode:'add'|'edit', data? }
-  const [form, setForm]         = useState({
-    fieldId: '', weekdayPrice: '',
-    startTime: '05:00', endTime: '23:00',
-    effectiveFrom: todayStr(), effectiveTo: '',
-  })
-  const [saving, setSaving] = useState(false)
-  const [msg, setMsg]       = useState('')
+  const [pricings, setPricings]     = useState([])
+  const [loading, setLoading]       = useState(true)
+  const [editModal, setEditModal]   = useState(null)
+  const [applyModal, setApplyModal] = useState(null)
+  const [form, setForm]             = useState({})
+  const [saving, setSaving]         = useState(false)
+  const [msg, setMsg]               = useState('')
+  const [applyMsg, setApplyMsg]     = useState('')
 
-  // Load: lấy tất cả pricing, chỉ giữ WEEKDAY để gộp hiển thị 1 dòng/sân
   const load = useCallback(() => {
     setLoading(true)
     api.get('/field-pricings')
       .then(r => {
-        // Gộp theo fieldId, chỉ lấy bản ghi WEEKDAY active làm đại diện
+        console.log('[Pricing] raw API response:', r.data)
+        // Lấy bản ghi WEEKDAY active mới nhất (effectiveFrom lớn nhất) cho mỗi sân
         const map = {}
         r.data
-          .filter(p => p.dayOfWeek === 'WEEKDAY' && p.isActive)
-          .forEach(p => { map[p.fieldId] = p })
+          .filter(p => p.dayOfWeek === 'WEEKDAY' && (p.isActive !== false && p.active !== false))
+          .forEach(p => {
+            const existing = map[p.fieldId]
+            if (!existing || (p.effectiveFrom || '') > (existing.effectiveFrom || '')) {
+              map[p.fieldId] = p
+            }
+          })
+        console.log('[Pricing] after filter map:', map)
         setPricings(Object.values(map))
       })
-      .catch(() => setPricings([]))
+      .catch(e => { console.error('[Pricing] API error:', e); setPricings([]) })
       .finally(() => setLoading(false))
   }, [])
 
   useEffect(() => { load() }, [load])
 
-  const openAdd = () => {
-    setForm({ fieldId: '', weekdayPrice: '', startTime: '05:00', endTime: '23:00', effectiveFrom: todayStr(), effectiveTo: '' })
-    setMsg('')
-    setModal({ mode: 'add' })
+  const grouped = Object.entries({ '5V5': 'Sân 5 người', '7V7': 'Sân 7 người', '9V9': 'Sân 9 người' }).map(([type, label]) => {
+    const fieldsOfType = fields.filter(f => normalizeType(f.type) === type)
+    return { type, label, fields: fieldsOfType }
+  }).filter(g => g.fields.length > 0)
+
+  const getPricing = (fieldId) => pricings.find(p => p.fieldId === fieldId)
+
+  // Giá thực từ DB: lấy giá trung bình (hoặc giá phổ biến nhất) của từng loại sân
+  const getTypePrice = (type) => {
+    const typePricings = pricings.filter(p => {
+      const field = fields.find(f => f.id === p.fieldId)
+      return field && normalizeType(field.type) === type
+    })
+    if (typePricings.length === 0) return null
+    // Lấy giá xuất hiện nhiều nhất trong loại sân này
+    const freq = {}
+    typePricings.forEach(p => { freq[p.price] = (freq[p.price] || 0) + 1 })
+    return Number(Object.entries(freq).sort((a,b) => b[1]-a[1])[0][0])
   }
 
-  const openEdit = p => {
+  const openEdit = (field) => {
+    const p = getPricing(field.id)
     setForm({
-      fieldId:      p.fieldId,
-      weekdayPrice: p.price || '',
-      startTime:    p.startTime?.substring(0, 5) || '05:00',
-      endTime:      p.endTime?.substring(0, 5)   || '23:00',
-      effectiveFrom: p.effectiveFrom || todayStr(),
-      effectiveTo:   p.effectiveTo   || '',
+      fieldId:      field.id,
+      fieldName:    field.name,
+      weekdayPrice: p?.price || '',
+      startTime:    p?.startTime?.substring(0, 5) || '05:00',
+      endTime:      p?.endTime?.substring(0, 5)   || '23:30',
+      effectiveFrom: todayStr(),
     })
     setMsg('')
-    setModal({ mode: 'edit', data: p })
+    setEditModal(true)
   }
 
-  const handleSave = async () => {
-    if (!form.fieldId)      { setMsg('Vui lòng chọn sân'); return }
+  const openApplyType = (type) => {
+    const dbPrice = getTypePrice(type)
+    setForm({
+      type,
+      weekdayPrice: dbPrice || '',
+      startTime: '05:00',
+      endTime: '23:30',
+      effectiveFrom: todayStr(),
+    })
+    setApplyMsg('')
+    setApplyModal(type)
+  }
+
+  const handleSaveOne = async () => {
     if (!form.weekdayPrice) { setMsg('Vui lòng nhập giá ngày thường'); return }
     setSaving(true); setMsg('')
     try {
@@ -101,129 +166,136 @@ function TabFieldPricing({ fields }) {
         startTime:     form.startTime,
         endTime:       form.endTime,
         effectiveFrom: form.effectiveFrom || null,
-        effectiveTo:   form.effectiveTo   || null,
       })
-      setModal(null)
-      load()
+      setEditModal(null); load()
     } catch (e) {
       setMsg(e.response?.data?.message || 'Lỗi khi lưu')
     } finally { setSaving(false) }
   }
 
-  const handleDelete = async fieldId => {
-    if (!window.confirm('Xóa bảng giá của sân này?')) return
+  const handleApplyAll = async () => {
+    if (!form.weekdayPrice) { setApplyMsg('Vui lòng nhập giá'); return }
+    setSaving(true); setApplyMsg('')
     try {
-      const res = await api.get(`/field-pricings/field/${fieldId}`)
-      await Promise.all(
-        res.data
-          .filter(p => p.dayOfWeek !== 'HOLIDAY')
-          .map(p => api.delete(`/field-pricings/${p.id}`))
-      )
-      load()
-    } catch (e) { alert('Lỗi: ' + (e.response?.data?.message || e.message)) }
+      const typeFields = fields.filter(f => normalizeType(f.type) === form.type)
+      const count = await api.post('/field-pricings/bulk-apply', {
+        fieldIds:      typeFields.map(f => f.id),
+        weekdayPrice:  Number(form.weekdayPrice),
+        startTime:     form.startTime,
+        endTime:       form.endTime,
+        effectiveFrom: form.effectiveFrom || null,
+      })
+      setApplyMsg(`✅ Đã áp giá cho ${count.data} sân`)
+      setTimeout(() => { setApplyModal(null); load() }, 1200)
+    } catch (e) {
+      setApplyMsg('❌ ' + (e.response?.data?.message || 'Lỗi'))
+    } finally { setSaving(false) }
   }
 
-  const weekendPreview = calcWeekend(form.weekdayPrice)
-
-  // Nhóm theo loại sân
-  const grouped = ['5V5', '7V7', '9V9'].reduce((acc, t) => {
-    const rows = pricings.filter(p => p.fieldType === t)
-    if (rows.length) acc[t] = rows
-    return acc
-  }, {})
+  const wkPreview = calcWeekend(form.weekdayPrice)
 
   return (
     <div>
       <div className={styles.sectionHeader}>
         <div>
           <h2>Bảng giá sân</h2>
-          <p className={styles.sectionDesc}>Giá cuối tuần tự động = giá ngày thường × 1.25</p>
+          <p className={styles.sectionDesc}>Giá cuối tuần = giá ngày thường × 1.25 (tự động tính)</p>
         </div>
-        <button className={styles.btnGreen} onClick={openAdd}>+ Đặt giá sân</button>
       </div>
 
+      {/* Cards giá thực từ DB — hiển thị giá phổ biến nhất của từng loại sân */}
+      <div className={styles.defaultPriceRow}>
+        {['5V5', '7V7', '9V9'].map(type => {
+          const price = getTypePrice(type)
+          const hasPrice = price != null
+          return (
+            <div key={type} className={styles.defaultPriceCard}>
+              <div className={styles.defaultPriceType}>{TYPE_LABEL[type]}</div>
+              {loading ? (
+                <div className={styles.defaultPriceVal} style={{fontSize:14,opacity:.7}}>Đang tải...</div>
+              ) : hasPrice ? (
+                <>
+                  <div className={styles.defaultPriceVal}>{vnd(price)}<span>/giờ</span></div>
+                  <div className={styles.defaultPriceWE}>Cuối tuần: {vnd(calcWeekend(price))}</div>
+                </>
+              ) : (
+                <>
+                  <div className={styles.defaultPriceVal} style={{fontSize:14,opacity:.7}}>Chưa có giá</div>
+                  <div className={styles.defaultPriceWE}>—</div>
+                </>
+              )}
+              <button className={styles.btnApplyType} onClick={() => openApplyType(type)}>
+                ⚡ Áp cho tất cả {TYPE_LABEL[type].toLowerCase()}
+              </button>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Bảng chi tiết từng sân */}
       {loading ? <p className={styles.loading}>Đang tải...</p>
-        : pricings.length === 0
-          ? <EmptyState icon="💰" text="Chưa có bảng giá. Nhấn Đặt giá sân để bắt đầu." />
-          : Object.entries(grouped).map(([type, rows]) => (
-            <div key={type} className={styles.group}>
-              <div className={styles.groupHeader}>
-                <span>⚽</span>
-                <span className={styles.groupTitle}>{TYPE_LABEL[type] || type}</span>
-                <span className={styles.groupCount}>{rows.length} sân</span>
-              </div>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Sân</th>
-                    <th>Loại</th>
-                    <th>Giờ hoạt động</th>
-                    <th className={styles.numCol}>Giá ngày thường</th>
-                    <th className={styles.numCol}>Giá cuối tuần</th>
-                    <th>Hiệu lực</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map(p => (
-                    <tr key={p.fieldId}>
-                      <td className={styles.bold}>{p.fieldName}</td>
-                      <td><TypeBadge type={p.fieldType} /></td>
-                      <td className={styles.mono}>
-                        {p.startTime?.substring(0,5)} – {p.endTime?.substring(0,5)}
-                      </td>
-                      <td className={styles.numCol}><strong>{vnd(p.price)}</strong></td>
-                      <td className={`${styles.numCol} ${styles.weekendPrice}`}>
-                        {vnd(calcWeekend(p.price))}
-                      </td>
-                      <td className={styles.mono}>
-                        {p.effectiveFrom || '—'}
-                        {p.effectiveTo ? ` → ${p.effectiveTo}` : ' → ∞'}
+        : grouped.map(g => (
+          <div key={g.type} className={styles.group}>
+            <div className={styles.groupHeader}>
+              <span>⚽</span>
+              <span className={styles.groupTitle}>{g.label}</span>
+              <span className={styles.groupCount}>{g.fields.length} sân</span>
+            </div>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Sân</th>
+                  <th className={styles.numCol}>Giá ngày thường</th>
+                  <th className={styles.numCol}>Giá cuối tuần</th>
+                  <th>Hiệu lực từ</th>
+                  <th>Trạng thái</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {g.fields.map(field => {
+                  const p = getPricing(field.id)
+                  const wd = p?.price || null
+                  const hasCustom = !!p
+                  return (
+                    <tr key={field.id}>
+                      <td className={styles.bold}>{field.name}</td>
+                      <td className={styles.numCol}><strong>{vnd(wd)}</strong></td>
+                      <td className={`${styles.numCol} ${styles.weekendPrice}`}>{vnd(calcWeekend(wd))}</td>
+                      <td className={styles.mono}>{p?.effectiveFrom || '—'}</td>
+                      <td>
+                        {hasCustom
+                          ? <span className={styles.badge} style={{ background: '#dcfce7', color: '#166534' }}>Đã tùy chỉnh</span>
+                          : <span className={styles.badge} style={{ background: '#f3f4f6', color: '#6b7280' }}>Mặc định</span>
+                        }
                       </td>
                       <td>
-                        <div className={styles.rowBtns}>
-                          <button className={styles.btnEdit} onClick={() => openEdit(p)}>✏️</button>
-                          <button className={styles.btnDel}  onClick={() => handleDelete(p.fieldId)}>🗑️</button>
-                        </div>
+                        <button className={styles.btnEdit} onClick={() => openEdit(field)}>✏️ Sửa</button>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ))
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        ))
       }
 
-      {modal && (
-        <Modal
-          title={modal.mode === 'add' ? '💰 Đặt giá sân' : `✏️ Cập nhật giá: ${modal.data?.fieldName}`}
-          onClose={() => setModal(null)}
-        >
-          <FormGroup label="Sân bóng" required>
-            <select className={styles.input} value={form.fieldId}
-              onChange={e => setForm(f => ({ ...f, fieldId: e.target.value }))}
-              disabled={modal.mode === 'edit'}>
-              <option value="">-- Chọn sân --</option>
-              {fields.map(f => (
-                <option key={f.id} value={f.id}>{f.name} ({f.type})</option>
-              ))}
-            </select>
-          </FormGroup>
-
+      {/* Modal sửa 1 sân */}
+      {editModal && (
+        <Modal title={`✏️ Cập nhật giá: ${form.fieldName}`} onClose={() => setEditModal(null)}>
           <FormGroup label="Giá ngày thường (₫)" required>
-            <input type="number" className={styles.input} placeholder="VD: 200000"
-              value={form.weekdayPrice} min={0} step={1000}
+            <input type="number" className={styles.input} min={0} step={1000}
+              value={form.weekdayPrice}
               onChange={e => setForm(f => ({ ...f, weekdayPrice: e.target.value }))} />
           </FormGroup>
-
-          {weekendPreview > 0 && (
+          {wkPreview > 0 && (
             <div className={styles.autoCalc}>
-              <span>Giá cuối tuần (tự tính):</span>
-              <strong>{vnd(weekendPreview)}</strong>
+              <span>Giá cuối tuần:</span>
+              <strong>{vnd(wkPreview)}</strong>
               <span className={styles.formula}>= {vnd(form.weekdayPrice)} × 1.25</span>
             </div>
           )}
-
           <div className={styles.formRow}>
             <FormGroup label="Giờ mở cửa">
               <input type="time" className={styles.input} value={form.startTime}
@@ -234,20 +306,50 @@ function TabFieldPricing({ fields }) {
                 onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))} />
             </FormGroup>
           </div>
+          <FormGroup label="Hiệu lực từ ngày">
+            <input type="date" className={styles.input} value={form.effectiveFrom}
+              onChange={e => setForm(f => ({ ...f, effectiveFrom: e.target.value }))} />
+          </FormGroup>
+          {msg && <p className={styles.errMsg}>❌ {msg}</p>}
+          <ModalFooter onCancel={() => setEditModal(null)} onSave={handleSaveOne} saving={saving} />
+        </Modal>
+      )}
 
+      {/* Modal áp dụng theo loại sân */}
+      {applyModal && (
+        <Modal title={`⚡ Áp giá cho tất cả ${TYPE_LABEL[applyModal]}`} onClose={() => setApplyModal(null)}>
+          <p className={styles.applyNote}>
+            Sẽ áp dụng giá này cho <strong>tất cả {fields.filter(f => normalizeType(f.type) === applyModal).length} sân loại {TYPE_LABEL[applyModal]}</strong>.
+          </p>
+          <FormGroup label="Giá ngày thường (₫)" required>
+            <input type="number" className={styles.input} min={0} step={1000}
+              value={form.weekdayPrice}
+              onChange={e => setForm(f => ({ ...f, weekdayPrice: e.target.value }))} />
+          </FormGroup>
+          {calcWeekend(form.weekdayPrice) > 0 && (
+            <div className={styles.autoCalc}>
+              <span>Giá cuối tuần:</span>
+              <strong>{vnd(calcWeekend(form.weekdayPrice))}</strong>
+              <span className={styles.formula}>× 1.25</span>
+            </div>
+          )}
           <div className={styles.formRow}>
-            <FormGroup label="Hiệu lực từ">
-              <input type="date" className={styles.input} value={form.effectiveFrom}
-                onChange={e => setForm(f => ({ ...f, effectiveFrom: e.target.value }))} />
+            <FormGroup label="Giờ mở cửa">
+              <input type="time" className={styles.input} value={form.startTime}
+                onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))} />
             </FormGroup>
-            <FormGroup label="Hết hạn (để trống = vô thời hạn)">
-              <input type="date" className={styles.input} value={form.effectiveTo}
-                onChange={e => setForm(f => ({ ...f, effectiveTo: e.target.value }))} />
+            <FormGroup label="Giờ đóng cửa">
+              <input type="time" className={styles.input} value={form.endTime}
+                onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))} />
             </FormGroup>
           </div>
-
-          {msg && <p className={styles.errMsg}>❌ {msg}</p>}
-          <ModalFooter onCancel={() => setModal(null)} onSave={handleSave} saving={saving} />
+          <FormGroup label="Hiệu lực từ ngày">
+            <input type="date" className={styles.input} value={form.effectiveFrom}
+              onChange={e => setForm(f => ({ ...f, effectiveFrom: e.target.value }))} />
+          </FormGroup>
+          {applyMsg && <p className={styles.bulkMsg}>{applyMsg}</p>}
+          <ModalFooter onCancel={() => setApplyModal(null)} onSave={handleApplyAll}
+            saving={saving} saveLabel="⚡ Áp dụng tất cả" />
         </Modal>
       )}
     </div>
@@ -255,141 +357,23 @@ function TabFieldPricing({ fields }) {
 }
 
 // ════════════════════════════════════════════════════════════════
-// TAB 2 — ÁP GIÁ HÀNG LOẠT
-// ════════════════════════════════════════════════════════════════
-function TabBulkPricing({ fields }) {
-  const [selType, setSelType]    = useState('5V5')
-  const [selIds, setSelIds]      = useState([])
-  const [weekdayPrice, setPrice] = useState('')
-  const [startTime, setStart]    = useState('05:00')
-  const [endTime, setEnd]        = useState('23:00')
-  const [effectiveFrom, setFrom] = useState(todayStr())
-  const [applying, setApplying]  = useState(false)
-  const [msg, setMsg]            = useState('')
-
-  const typeFields = fields.filter(f => f.type === selType)
-  const allChecked = typeFields.length > 0 && selIds.length === typeFields.length
-
-  const toggleAll   = () => setSelIds(allChecked ? [] : typeFields.map(f => f.id))
-  const toggleField = id => setSelIds(p =>
-    p.includes(id) ? p.filter(x => x !== id) : [...p, id]
-  )
-
-  const handleApply = async () => {
-    if (!weekdayPrice) { setMsg('Vui lòng nhập giá ngày thường'); return }
-    if (!selIds.length) { setMsg('Vui lòng chọn ít nhất 1 sân'); return }
-    setApplying(true); setMsg('')
-    try {
-      const res = await api.post('/field-pricings/bulk-apply', {
-        weekdayPrice: Number(weekdayPrice),
-        fieldIds: selIds,
-        startTime, endTime, effectiveFrom,
-      })
-      setMsg(`✅ Đã áp giá cho ${selIds.length} sân thành công!`)
-      setSelIds([]); setPrice('')
-    } catch (e) {
-      setMsg('❌ ' + (e.response?.data?.message || 'Lỗi'))
-    } finally { setApplying(false) }
-  }
-
-  const weekend = calcWeekend(weekdayPrice)
-
-  return (
-    <div>
-      <div className={styles.sectionHeader}>
-        <div>
-          <h2>Áp giá hàng loạt</h2>
-          <p className={styles.sectionDesc}>Đồng bộ giá cho nhiều sân cùng loại một lúc</p>
-        </div>
-      </div>
-
-      <div className={styles.bulkCard}>
-        <FormGroup label="Chọn loại sân">
-          <div className={styles.typeTabs}>
-            {TYPE_OPTIONS.map(o => (
-              <button key={o.value}
-                className={`${styles.typeTab} ${selType === o.value ? styles.typeTabActive : ''}`}
-                onClick={() => { setSelType(o.value); setSelIds([]) }}>
-                {o.label}
-              </button>
-            ))}
-          </div>
-        </FormGroup>
-
-        <FormGroup label={`Chọn sân (${selIds.length}/${typeFields.length} đã chọn)`}>
-          <div className={styles.checkHeader}>
-            <button className={styles.btnSelectAll} onClick={toggleAll}>
-              {allChecked ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
-            </button>
-          </div>
-          <div className={styles.checkGrid}>
-            {typeFields.length === 0
-              ? <p className={styles.empty}>Không có sân loại {selType}</p>
-              : typeFields.map(f => (
-                <label key={f.id} className={`${styles.checkItem} ${selIds.includes(f.id) ? styles.checkItemOn : ''}`}>
-                  <input type="checkbox" checked={selIds.includes(f.id)} onChange={() => toggleField(f.id)} />
-                  <span>{f.name}</span>
-                </label>
-              ))
-            }
-          </div>
-        </FormGroup>
-
-        <div className={styles.formRow}>
-          <FormGroup label="Giá ngày thường (₫)" required>
-            <input type="number" className={styles.input} placeholder="VD: 200000"
-              value={weekdayPrice} min={0} step={1000}
-              onChange={e => setPrice(e.target.value)} />
-          </FormGroup>
-          <FormGroup label="Hiệu lực từ ngày">
-            <input type="date" className={styles.input} value={effectiveFrom}
-              onChange={e => setFrom(e.target.value)} />
-          </FormGroup>
-        </div>
-
-        <div className={styles.formRow}>
-          <FormGroup label="Giờ mở cửa">
-            <input type="time" className={styles.input} value={startTime}
-              onChange={e => setStart(e.target.value)} />
-          </FormGroup>
-          <FormGroup label="Giờ đóng cửa">
-            <input type="time" className={styles.input} value={endTime}
-              onChange={e => setEnd(e.target.value)} />
-          </FormGroup>
-        </div>
-
-        {weekend > 0 && (
-          <div className={styles.autoCalc}>
-            <span>Giá cuối tuần (tự tính):</span>
-            <strong>{vnd(weekend)}</strong>
-            <span className={styles.formula}>= {vnd(weekdayPrice)} × 1.25</span>
-          </div>
-        )}
-
-        {msg && <p className={styles.bulkMsg}>{msg}</p>}
-
-        <button className={styles.btnApply} onClick={handleApply}
-          disabled={applying || !selIds.length || !weekdayPrice}>
-          {applying ? '⏳ Đang áp dụng...' : `⚡ Áp giá cho ${selIds.length} sân`}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// ════════════════════════════════════════════════════════════════
-// TAB 3 — GIÁ NGÀY LỄ
+// TAB 2 — GIÁ NGÀY LỄ
+// Tạo holiday: chọn tất cả hoặc chọn từng sân, nhập % tăng, preview giá
 // ════════════════════════════════════════════════════════════════
 function TabHolidayPricing({ fields }) {
-  const [holidays, setHolidays] = useState([])
-  const [loading, setLoading]   = useState(true)
-  const [modal, setModal]       = useState(false)
-  const [form, setForm]         = useState({
+  const [holidays, setHolidays]       = useState([])
+  const [basePrices, setBasePrices]   = useState({})   // fieldId → weekday price
+  const [loading, setLoading]         = useState(true)
+  const [createModal, setCreateModal] = useState(false)
+  const [editModal, setEditModal]     = useState(null)
+  const [form, setForm]               = useState({
     holidayName: '', effectiveFrom: '', effectiveTo: '',
-    increasePercentage: '', target: 'ALL', fieldType: '', fieldIds: [],
+    increasePercentage: '', targetAll: true, fieldIds: [],
   })
-  const [saving, setSaving] = useState(false)
-  const [msg, setMsg]       = useState('')
+  const [editForm, setEditForm]       = useState({ effectiveFrom: '', effectiveTo: '' })
+  const [saving, setSaving]           = useState(false)
+  const [msg, setMsg]                 = useState('')
+  const [editMsg, setEditMsg]         = useState('')
 
   const load = () => {
     setLoading(true)
@@ -398,78 +382,150 @@ function TabHolidayPricing({ fields }) {
       .catch(() => setHolidays([]))
       .finally(() => setLoading(false))
   }
-  useEffect(load, [])
 
-  const openAdd = () => {
-    setForm({ holidayName: '', effectiveFrom: '', effectiveTo: '', increasePercentage: '', target: 'ALL', fieldType: '', fieldIds: [] })
-    setMsg('')
-    setModal(true)
+  // Load giá ngày thường của từng sân để preview
+  const loadBasePrices = useCallback(() => {
+    api.get('/field-pricings').then(r => {
+      const map = {}
+      r.data.filter(p => p.dayOfWeek === 'WEEKDAY' && (p.isActive !== false && p.active !== false))
+        .forEach(p => { map[p.fieldId] = Number(p.price) })
+      setBasePrices(map)
+    }).catch(() => {})
+  }, [])
+
+  useEffect(() => { load(); loadBasePrices() }, [loadBasePrices])
+
+  const getBasePrice = (fieldId, fieldType) => {
+    if (basePrices[fieldId]) return basePrices[fieldId]
+    const t = normalizeType(fieldType)
+    const fallback = { '5V5': 200000, '7V7': 240000, '9V9': 300000 }
+    return fallback[t] || 200000
   }
 
-  const handleSave = async () => {
+  const calcHolidayPrice = (fieldId, fieldType, pct) => {
+    if (!pct) return null
+    const base = getBasePrice(fieldId, fieldType)
+    return Math.ceil(base * (1 + Number(pct) / 100) / 1000) * 1000
+  }
+
+  // Nhóm holiday theo tên dịp lễ
+  const groups = Object.values(
+    holidays.reduce((acc, h) => {
+      const key = h.holidayName || 'Không tên'
+      if (!acc[key]) acc[key] = { name: key, from: h.effectiveFrom, to: h.effectiveTo, rows: [] }
+      acc[key].rows.push(h)
+      return acc
+    }, {})
+  ).sort((a, b) => (b.from || '').localeCompare(a.from || ''))
+
+  const openCreate = () => {
+    setForm({ holidayName: '', effectiveFrom: '', effectiveTo: '', increasePercentage: '', targetAll: true, fieldIds: [] })
+    setMsg('')
+    setCreateModal(true)
+  }
+
+  const toggleField = (id) => {
+    setForm(f => ({
+      ...f,
+      fieldIds: f.fieldIds.includes(id) ? f.fieldIds.filter(x => x !== id) : [...f.fieldIds, id]
+    }))
+  }
+
+  const previewFields = form.targetAll ? fields : fields.filter(f => form.fieldIds.includes(f.id))
+
+  const handleCreate = async () => {
     if (!form.holidayName)        { setMsg('Vui lòng nhập tên dịp lễ'); return }
     if (!form.effectiveFrom)      { setMsg('Vui lòng chọn ngày bắt đầu'); return }
     if (!form.effectiveTo)        { setMsg('Vui lòng chọn ngày kết thúc'); return }
     if (!form.increasePercentage) { setMsg('Vui lòng nhập % tăng giá'); return }
+    if (form.effectiveTo < form.effectiveFrom) { setMsg('Ngày kết thúc phải sau ngày bắt đầu'); return }
+    if (!form.targetAll && form.fieldIds.length === 0) { setMsg('Vui lòng chọn ít nhất 1 sân'); return }
+    const pct = Number(form.increasePercentage)
+    if (isNaN(pct) || pct <= 0 || pct > 500) { setMsg('% tăng giá phải từ 1 đến 500'); return }
 
     setSaving(true); setMsg('')
-
-    const body = {
-      holidayName:        form.holidayName,
-      effectiveFrom:      form.effectiveFrom,
-      effectiveTo:        form.effectiveTo,
-      increasePercentage: Number(form.increasePercentage),
-    }
-
-    // Xác định mục tiêu
-    if (form.target === 'TYPE' && form.fieldType) {
-      body.fieldType = form.fieldType
-    } else if (form.target === 'FIELDS' && form.fieldIds.length) {
-      body.fieldIds = form.fieldIds
-    }
-    // target = 'ALL' → không gửi fieldIds/fieldType → service áp tất cả sân
-
     try {
-      await api.post('/field-pricings/holiday/bulk', body)
-      setModal(false)
+      const payload = {
+        holidayName:        form.holidayName,
+        effectiveFrom:      form.effectiveFrom,
+        effectiveTo:        form.effectiveTo,
+        increasePercentage: pct,
+      }
+      // Nếu chọn riêng sân thì gửi fieldIds, không gửi → backend áp tất cả
+      if (!form.targetAll && form.fieldIds.length > 0) {
+        payload.fieldIds = form.fieldIds
+      }
+
+      const created = await api.post('/field-pricings/holiday/bulk', payload)
+
+      // Sync giá các slot đã sinh trong khoảng ngày lễ
+      const allFieldIds = [...new Set(created.data.map(p => p.fieldId))]
+      if (allFieldIds.length > 0) {
+        try {
+          await api.post('/field-slots/apply-holiday', {
+            fieldIds:          allFieldIds,
+            from:              form.effectiveFrom,
+            to:                form.effectiveTo,
+            adjustmentPercent: pct,
+          })
+        } catch (slotErr) {
+          console.warn('Sync slot không thành công:', slotErr)
+          // Không block — pricing đã lưu thành công
+        }
+      }
+
+      setCreateModal(false)
       load()
     } catch (e) {
-      setMsg(e.response?.data?.message || 'Lỗi khi lưu')
+      const errMsg = e.response?.data?.message || JSON.stringify(e.response?.data) || e.message || 'Lỗi khi lưu'
+      setMsg(`❌ ${errMsg}`)
     } finally { setSaving(false) }
   }
 
-  const handleDelete = async id => {
-    if (!window.confirm('Xóa giá ngày lễ này?')) return
-    try { await api.delete(`/field-pricings/${id}`); load() }
-    catch (e) { alert('Lỗi: ' + (e.response?.data?.message || e.message)) }
+  const openEditDates = (g) => {
+    setEditForm({ holidayName: g.name, effectiveFrom: g.from, effectiveTo: g.to })
+    setEditMsg('')
+    setEditModal(g)
   }
 
-  const now = todayStr()
-  const statusOf = h => {
-    if (h.effectiveTo && h.effectiveTo < now) return 'expired'
-    if (h.effectiveFrom > now) return 'upcoming'
-    return 'active'
-  }
-  const statusStyle = {
-    active:   { background: '#dcfce7', color: '#166534' },
-    upcoming: { background: '#fef9c3', color: '#854d0e' },
-    expired:  { background: '#f3f4f6', color: '#6b7280' },
-  }
-  const statusLabel = { active: 'Đang áp dụng', upcoming: 'Sắp tới', expired: 'Đã hết hạn' }
+  const handleUpdateDates = async () => {
+    if (!editForm.effectiveFrom || !editForm.effectiveTo) { setEditMsg('Vui lòng chọn đủ ngày'); return }
+    if (editForm.effectiveTo < editForm.effectiveFrom) { setEditMsg('Ngày kết thúc phải sau ngày bắt đầu'); return }
+    setSaving(true); setEditMsg('')
+    try {
+      await api.put('/field-pricings/holiday/update-dates', {
+        holidayName:   editModal.name,
+        effectiveFrom: editForm.effectiveFrom,
+        effectiveTo:   editForm.effectiveTo,
+      })
 
-  // Group theo holidayName + effectiveFrom
-  const groups = Object.values(
-    holidays.reduce((acc, h) => {
-      const key = `${h.holidayName}__${h.effectiveFrom}__${h.effectiveTo}`
-      if (!acc[key]) acc[key] = { key, name: h.holidayName, from: h.effectiveFrom, to: h.effectiveTo, rows: [] }
-      acc[key].rows.push(h)
-      return acc
-    }, {})
-  ).sort((a, b) => b.from.localeCompare(a.from))
+      // Sync slot giá mới cho khoảng ngày vừa cập nhật
+      const fieldIds = editModal.rows.map(r => r.fieldId)
+      try {
+        await api.post('/field-slots/apply-holiday', {
+          fieldIds,
+          from:              editForm.effectiveFrom,
+          to:                editForm.effectiveTo,
+          adjustmentPercent: 0, // 0 = dùng giá từ field_pricing HOLIDAY đã lưu
+        })
+      } catch { /* không block */ }
 
-  const targetFields = form.fieldType
-    ? fields.filter(f => f.type === form.fieldType)
-    : fields
+      setEditModal(null)
+      load()
+    } catch (e) {
+      setEditMsg(e.response?.data?.message || 'Lỗi khi cập nhật')
+    } finally { setSaving(false) }
+  }
+
+  const handleDeleteGroup = async (g) => {
+    if (!window.confirm(`Xóa toàn bộ giá ngày lễ "${g.name}"? Giá slot không bị ảnh hưởng.`)) return
+    try {
+      await Promise.all(g.rows.map(r => api.delete(`/field-pricings/${r.id}`)))
+      load()
+    } catch (e) { alert('Lỗi: ' + (e.response?.data?.message || e.message)) }
+  }
+
+  const pct = Number(form.increasePercentage)
 
   return (
     <div>
@@ -477,25 +533,38 @@ function TabHolidayPricing({ fields }) {
         <div>
           <h2>Giá ngày lễ</h2>
           <p className={styles.sectionDesc}>
-            Lưu vào bảng field_pricing (dayOfWeek = HOLIDAY) · Tự hết hạn sau ngày kết thúc
+            Tăng giá theo % so với giá ngày thường · Tự động áp vào slot đã sinh · Có thể sửa thời gian và tái sử dụng
           </p>
         </div>
-        <button className={styles.btnGreen} onClick={openAdd}>+ Thêm giá ngày lễ</button>
+        <button className={styles.btnGreen} onClick={openCreate}>+ Thêm giá ngày lễ</button>
       </div>
 
       {loading ? <p className={styles.loading}>Đang tải...</p>
         : groups.length === 0
-          ? <EmptyState icon="🎉" text="Chưa có giá ngày lễ nào." />
+          ? (
+            <div className={styles.emptyBox}>
+              <div className={styles.emptyIcon}>🎉</div>
+              <p>Chưa có giá ngày lễ nào. Nhấn "Thêm giá ngày lễ" để bắt đầu.</p>
+            </div>
+          )
           : groups.map(g => {
-            const st = statusOf(g.rows[0])
+            const st = statusOf(g.from, g.to)
             return (
-              <div key={g.key} className={`${styles.group} ${st === 'expired' ? styles.groupExpired : ''}`}>
+              <div key={g.name} className={`${styles.group} ${st === 'expired' ? styles.groupExpired : ''}`}>
                 <div className={styles.groupHeader}>
                   <span>🎉</span>
                   <span className={styles.groupTitle}>{g.name}</span>
                   <span className={styles.mono}>{g.from} → {g.to}</span>
-                  <span className={styles.badge} style={statusStyle[st]}>{statusLabel[st]}</span>
+                  <span className={styles.badge} style={STATUS_STYLE[st]}>{STATUS_LABEL[st]}</span>
                   <span className={styles.groupCount}>{g.rows.length} sân</span>
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+                    <button className={styles.btnEdit} onClick={() => openEditDates(g)}>
+                      📅 Sửa thời gian
+                    </button>
+                    <button className={styles.btnDel} onClick={() => handleDeleteGroup(g)}>
+                      🗑️
+                    </button>
+                  </div>
                 </div>
                 <table className={styles.table}>
                   <thead>
@@ -503,19 +572,17 @@ function TabHolidayPricing({ fields }) {
                       <th>Sân</th>
                       <th>Loại</th>
                       <th className={styles.numCol}>Giá ngày lễ</th>
-                      <th></th>
                     </tr>
                   </thead>
                   <tbody>
                     {g.rows.map(h => (
-                      <tr key={h.id} className={st === 'expired' ? styles.rowExpired : ''}>
+                      <tr key={h.id}>
                         <td className={styles.bold}>{h.fieldName}</td>
-                        <td><TypeBadge type={h.fieldType} /></td>
+                        <td>
+                          <span className={styles.typeBadge}>{TYPE_LABEL[h.fieldType] || h.fieldType}</span>
+                        </td>
                         <td className={styles.numCol}>
                           <strong className={styles.holidayPrice}>{vnd(h.price)}</strong>
-                        </td>
-                        <td>
-                          <button className={styles.btnDel} onClick={() => handleDelete(h.id)}>🗑️</button>
                         </td>
                       </tr>
                     ))}
@@ -526,14 +593,18 @@ function TabHolidayPricing({ fields }) {
           })
       }
 
-      {modal && (
-        <Modal title="🎉 Thêm giá ngày lễ" onClose={() => setModal(false)} wide>
+      {/* ── Modal tạo giá ngày lễ ──────────────────────────── */}
+      {createModal && (
+        <Modal title="🎉 Thêm giá ngày lễ" wide onClose={() => setCreateModal(false)}>
+          {/* Tên dịp lễ */}
           <FormGroup label="Tên dịp lễ" required>
-            <input className={styles.input} placeholder="VD: Tết Nguyên Đán, Quốc khánh 2/9..."
+            <input className={styles.input}
+              placeholder="VD: Tết Nguyên Đán, Quốc khánh 2/9, Nghỉ hè"
               value={form.holidayName}
               onChange={e => setForm(f => ({ ...f, holidayName: e.target.value }))} />
           </FormGroup>
 
+          {/* Khoảng thời gian */}
           <div className={styles.formRow}>
             <FormGroup label="Từ ngày" required>
               <input type="date" className={styles.input} value={form.effectiveFrom}
@@ -545,116 +616,340 @@ function TabHolidayPricing({ fields }) {
             </FormGroup>
           </div>
 
-          <FormGroup label="Tăng giá (%)" required>
-            <input type="number" className={styles.input}
-              placeholder="VD: 50 (tăng 50% so với giá ngày thường)"
-              value={form.increasePercentage} min={1} max={500}
+          {/* % tăng giá */}
+          <FormGroup label="Tăng giá (%)" required
+            hint="Nhập số % tăng so với giá ngày thường · VD: 30 = tăng 30%">
+            <input type="number" className={styles.input} min={1} max={500} step={1}
+              placeholder="VD: 30"
+              value={form.increasePercentage}
               onChange={e => setForm(f => ({ ...f, increasePercentage: e.target.value }))} />
-            <small className={styles.hint}>
-              Hệ thống tự tính: giá lễ = giá ngày thường × (1 + {form.increasePercentage || '?'}%)
-            </small>
           </FormGroup>
 
-          <FormGroup label="Áp dụng cho">
-            <div className={styles.targetBtns}>
-              {[
-                { key: 'ALL',    label: '🌐 Tất cả sân' },
-                { key: 'TYPE',   label: '⚽ Theo loại sân' },
-                { key: 'FIELDS', label: '📋 Chọn sân cụ thể' },
-              ].map(o => (
-                <button key={o.key}
-                  className={`${styles.typeTab} ${form.target === o.key ? styles.typeTabActive : ''}`}
-                  onClick={() => setForm(f => ({ ...f, target: o.key, fieldType: '', fieldIds: [] }))}>
-                  {o.label}
-                </button>
-              ))}
+          {/* Chọn sân áp dụng */}
+          <div className={styles.formGroup}>
+            <label>Áp dụng cho sân</label>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.875rem' }}>
+                <input type="radio" checked={form.targetAll}
+                  onChange={() => setForm(f => ({ ...f, targetAll: true, fieldIds: [] }))} />
+                Tất cả sân ({fields.length} sân)
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.875rem' }}>
+                <input type="radio" checked={!form.targetAll}
+                  onChange={() => setForm(f => ({ ...f, targetAll: false }))} />
+                Chọn sân cụ thể
+              </label>
             </div>
-          </FormGroup>
 
-          {form.target === 'TYPE' && (
-            <FormGroup label="Loại sân">
-              <div className={styles.typeTabs}>
-                {TYPE_OPTIONS.map(o => (
-                  <button key={o.value}
-                    className={`${styles.typeTab} ${form.fieldType === o.value ? styles.typeTabActive : ''}`}
-                    onClick={() => setForm(f => ({ ...f, fieldType: o.value }))}>
-                    {o.label}
+            {!form.targetAll && (
+              <div className={styles.bulkCard}>
+                <div className={styles.checkHeader}>
+                  <button className={styles.btnSelectAll}
+                    onClick={() => setForm(f => ({
+                      ...f,
+                      fieldIds: f.fieldIds.length === fields.length ? [] : fields.map(x => x.id)
+                    }))}>
+                    {form.fieldIds.length === fields.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
                   </button>
-                ))}
+                </div>
+                <div className={styles.checkGrid}>
+                  {fields.map(field => {
+                    const on = form.fieldIds.includes(field.id)
+                    const typeKey = normalizeType(field.type)
+                    return (
+                      <label key={field.id}
+                        className={`${styles.checkItem} ${on ? styles.checkItemOn : ''}`}>
+                        <input type="checkbox" checked={on} onChange={() => toggleField(field.id)} />
+                        <div>
+                          <div style={{ fontWeight: 600 }}>{field.name}</div>
+                          <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>{TYPE_LABEL[typeKey]}</div>
+                        </div>
+                      </label>
+                    )
+                  })}
+                </div>
               </div>
-            </FormGroup>
+            )}
+          </div>
+
+          {/* Preview giá từng sân */}
+          {pct > 0 && previewFields.length > 0 && (
+            <div className={styles.previewBox}>
+              <div className={styles.previewTitle}>📋 Xem trước giá ngày lễ (+{pct}%)</div>
+              <table className={styles.table} style={{ marginTop: 0 }}>
+                <thead>
+                  <tr>
+                    <th>Sân</th>
+                    <th className={styles.numCol}>Giá gốc</th>
+                    <th className={styles.numCol}>Giá ngày lễ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {previewFields.map(field => {
+                    const base = getBasePrice(field.id, field.type)
+                    const holiday = calcHolidayPrice(field.id, field.type, pct)
+                    return (
+                      <tr key={field.id}>
+                        <td className={styles.bold}>{field.name}</td>
+                        <td className={styles.numCol} style={{ color: '#6b7280' }}>{vnd(base)}</td>
+                        <td className={styles.numCol}>
+                          <strong className={styles.holidayPrice}>{vnd(holiday)}</strong>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
 
-          {form.target === 'FIELDS' && (
-            <FormGroup label="Chọn sân">
-              <div className={styles.checkGrid}>
-                {targetFields.map(f => (
-                  <label key={f.id}
-                    className={`${styles.checkItem} ${form.fieldIds.includes(f.id) ? styles.checkItemOn : ''}`}>
-                    <input type="checkbox"
-                      checked={form.fieldIds.includes(f.id)}
-                      onChange={() => setForm(prev => ({
-                        ...prev,
-                        fieldIds: prev.fieldIds.includes(f.id)
-                          ? prev.fieldIds.filter(x => x !== f.id)
-                          : [...prev.fieldIds, f.id]
-                      }))} />
-                    <span>{f.name} ({f.type})</span>
-                  </label>
-                ))}
-              </div>
-            </FormGroup>
-          )}
+          {msg && <p className={styles.errMsg}>{msg}</p>}
+          <ModalFooter onCancel={() => setCreateModal(false)} onSave={handleCreate}
+            saving={saving} saveLabel="🎉 Tạo giá ngày lễ" />
+        </Modal>
+      )}
 
-          {msg && <p className={styles.errMsg}>❌ {msg}</p>}
-          <ModalFooter onCancel={() => setModal(false)} onSave={handleSave} saving={saving} />
+      {/* ── Modal sửa thời gian ──────────────────────────────── */}
+      {editModal && (
+        <Modal title={`📅 Sửa thời gian: ${editModal.name}`} onClose={() => setEditModal(null)}>
+          <p className={styles.applyNote}>
+            Cập nhật thời gian áp dụng mà <strong>không cần tạo lại</strong> giá ngày lễ.
+            Giá tiền các sân giữ nguyên và slot sẽ được cập nhật tự động.
+          </p>
+          <div className={styles.formRow}>
+            <FormGroup label="Từ ngày" required>
+              <input type="date" className={styles.input} value={editForm.effectiveFrom}
+                onChange={e => setEditForm(f => ({ ...f, effectiveFrom: e.target.value }))} />
+            </FormGroup>
+            <FormGroup label="Đến ngày" required>
+              <input type="date" className={styles.input} value={editForm.effectiveTo}
+                onChange={e => setEditForm(f => ({ ...f, effectiveTo: e.target.value }))} />
+            </FormGroup>
+          </div>
+          {editMsg && <p className={styles.errMsg}>❌ {editMsg}</p>}
+          <ModalFooter onCancel={() => setEditModal(null)} onSave={handleUpdateDates}
+            saving={saving} saveLabel="📅 Cập nhật" />
         </Modal>
       )}
     </div>
   )
 }
 
+
 // ════════════════════════════════════════════════════════════════
-// SHARED SUB-COMPONENTS
+// TAB 3 — PREVIEW GIÁ 14 NGÀY
+// Hiện thị giá thực tế từng sân × từng ngày trong 14 ngày tới
+// Tính từ field-pricings + holidays, không cần API mới
 // ════════════════════════════════════════════════════════════════
-function FormGroup({ label, required, children }) {
+function buildNext14Days() {
+  const days = []
+  for (let i = 0; i < 14; i++) {
+    const d = new Date()
+    d.setHours(0,0,0,0)
+    d.setDate(d.getDate() + i)
+    const iso = d.toISOString().split('T')[0]
+    const dow = d.getDay() // 0=CN, 6=T7
+    const isWE = dow === 0 || dow === 6
+    const dayNames = ['CN','T2','T3','T4','T5','T6','T7']
+    days.push({ iso, label: dayNames[dow], isWE })
+  }
+  return days
+}
+
+function isDateInHoliday(isoDate, holidays) {
+  return holidays.find(h =>
+    isoDate >= (h.effectiveFrom || '') && isoDate <= (h.effectiveTo || isoDate)
+  ) || null
+}
+
+function getEffectiveWeekdayPrice(fieldId, isoDate, allPricings) {
+  // Lấy bản ghi WEEKDAY có effectiveFrom <= isoDate, effectiveTo IS NULL hoặc >= isoDate,
+  // ưu tiên bản effectiveFrom mới nhất (giá mới nhất có hiệu lực)
+  const candidates = allPricings.filter(p =>
+    p.fieldId === fieldId &&
+    p.dayOfWeek === 'WEEKDAY' &&
+    (p.isActive !== false && p.active !== false) &&
+    (p.effectiveFrom || '') <= isoDate &&
+    (p.effectiveTo == null || p.effectiveTo >= isoDate)
+  )
+  if (!candidates.length) return null
+  candidates.sort((a,b) => (b.effectiveFrom||'').localeCompare(a.effectiveFrom||''))
+  return Number(candidates[0].price)
+}
+
+function calcPriceForDay(fieldId, fieldType, isoDate, allPricings, holidays) {
+  const holiday = isDateInHoliday(isoDate, holidays)
+  if (holiday) {
+    // Lấy giá HOLIDAY từ DB cho sân này trong khoảng ngày lễ đó
+    const hP = allPricings.find(p =>
+      p.fieldId === fieldId &&
+      p.dayOfWeek === 'HOLIDAY' &&
+      (p.isActive !== false && p.active !== false) &&
+      p.holidayName === holiday.holidayName &&
+      (p.effectiveFrom || '') <= isoDate &&
+      (p.effectiveTo == null || p.effectiveTo >= isoDate)
+    )
+    if (hP) return { price: Number(hP.price), type: 'holiday', holidayName: hP.holidayName }
+  }
+
+  const d = new Date(isoDate + 'T00:00:00')
+  const isWE = d.getDay() === 0 || d.getDay() === 6
+
+  if (isWE) {
+    // Ưu tiên bản ghi WEEKEND riêng
+    const weCandidates = allPricings.filter(p =>
+      p.fieldId === fieldId &&
+      p.dayOfWeek === 'WEEKEND' &&
+      (p.isActive !== false && p.active !== false) &&
+      (p.effectiveFrom || '') <= isoDate &&
+      (p.effectiveTo == null || p.effectiveTo >= isoDate)
+    )
+    if (weCandidates.length) {
+      weCandidates.sort((a,b) => (b.effectiveFrom||'').localeCompare(a.effectiveFrom||''))
+      return { price: Number(weCandidates[0].price), type: 'weekend' }
+    }
+    // Fallback: weekday × 1.25
+    const wd = getEffectiveWeekdayPrice(fieldId, isoDate, allPricings)
+    if (wd) return { price: Math.ceil(wd * 1.25 / 1000) * 1000, type: 'weekend' }
+    return { price: null, type: 'weekend' }
+  }
+
+  const wd = getEffectiveWeekdayPrice(fieldId, isoDate, allPricings)
+  return { price: wd, type: 'weekday' }
+}
+
+const PRICE_TYPE_STYLE = {
+  weekday: { bg: '#f0fdf4', color: '#166534', border: '#bbf7d0', label: 'Ngày thường' },
+  weekend: { bg: '#fff7ed', color: '#9a3412', border: '#fed7aa', label: 'Cuối tuần' },
+  holiday: { bg: '#fef2f2', color: '#991b1b', border: '#fecaca', label: 'Ngày lễ' },
+}
+
+function TabPricePreview({ fields }) {
+  const [allPricings, setAllPricings] = useState([])
+  const [holidays, setHolidays]       = useState([])
+  const [loading, setLoading]         = useState(true)
+  const [filterType, setFilterType]   = useState('ALL')
+  const days = buildNext14Days()
+
+  useEffect(() => {
+    setLoading(true)
+    Promise.all([
+      api.get('/field-pricings'),
+      api.get('/field-pricings/holidays'),
+    ]).then(([pRes, hRes]) => {
+      setAllPricings(pRes.data)
+      setHolidays(hRes.data)
+    }).catch(() => {}).finally(() => setLoading(false))
+  }, [])
+
+  const visibleFields = filterType === 'ALL'
+    ? fields
+    : fields.filter(f => normalizeType(f.type) === filterType)
+
+  // Nhóm theo loại sân
+  const grouped = ['5V5', '7V7', '9V9'].reduce((acc, t) => {
+    const fs = visibleFields.filter(f => normalizeType(f.type) === t)
+    if (fs.length) acc.push({ type: t, label: TYPE_LABEL[t], fields: fs })
+    return acc
+  }, [])
+
+  // Kiểm tra ngày nào là ngày lễ để highlight header
+  const dayHolidayMap = {}
+  days.forEach(d => {
+    const h = isDateInHoliday(d.iso, holidays)
+    if (h) dayHolidayMap[d.iso] = h.holidayName
+  })
+
   return (
-    <div className={styles.formGroup}>
-      <label>
-        {label}
-        {required && <span className={styles.req}> *</span>}
-      </label>
-      {children}
+    <div>
+      <div className={styles.sectionHeader}>
+        <div>
+          <h2>Preview giá 14 ngày tới</h2>
+          <p className={styles.sectionDesc}>
+            Giá thực tế từ database — admin kiểm tra trước khi user thấy
+            &nbsp;·&nbsp;
+            <span style={{color:'#166534'}}>■ Ngày thường</span>&nbsp;
+            <span style={{color:'#9a3412'}}>■ Cuối tuần ×1.25</span>&nbsp;
+            <span style={{color:'#991b1b'}}>■ Ngày lễ</span>
+          </p>
+        </div>
+        <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+          {[['ALL','Tất cả'],['5V5','Sân 5'],['7V7','Sân 7'],['9V9','Sân 9']].map(([k,v]) => (
+            <button key={k}
+              className={`${styles.tab} ${filterType===k ? styles.tabActive : ''}`}
+              style={{padding:'5px 12px',fontSize:'0.8rem'}}
+              onClick={() => setFilterType(k)}>{v}</button>
+          ))}
+        </div>
+      </div>
+
+      {loading ? (
+        <p className={styles.loading}>Đang tải dữ liệu giá...</p>
+      ) : (
+        grouped.map(g => (
+          <div key={g.type} className={styles.group} style={{marginBottom:24}}>
+            <div className={styles.groupHeader}>
+              <span>⚽</span>
+              <span className={styles.groupTitle}>{g.label}</span>
+              <span className={styles.groupCount}>{g.fields.length} sân</span>
+            </div>
+
+            {/* Timeline scroll wrapper */}
+            <div className={styles.previewScrollWrap}>
+              <table className={styles.previewTable}>
+                <thead>
+                  <tr>
+                    <th className={styles.previewFieldCol}>Sân</th>
+                    {days.map(d => (
+                      <th key={d.iso}
+                        className={`${styles.previewDayCol} ${d.isWE ? styles.previewDayWE : ''} ${dayHolidayMap[d.iso] ? styles.previewDayHoliday : ''}`}
+                        title={dayHolidayMap[d.iso] ? `🎉 ${dayHolidayMap[d.iso]}` : ''}
+                      >
+                        <div className={styles.previewDayLabel}>{d.label}</div>
+                        <div className={styles.previewDayDate}>{d.iso.substring(5)}</div>
+                        {dayHolidayMap[d.iso] && <div className={styles.previewDayLe}>lễ</div>}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {g.fields.map(field => (
+                    <tr key={field.id}>
+                      <td className={styles.previewFieldName}>{field.name}</td>
+                      {days.map(d => {
+                        const result = calcPriceForDay(field.id, field.type, d.iso, allPricings, holidays)
+                        const st = PRICE_TYPE_STYLE[result.type] || PRICE_TYPE_STYLE.weekday
+                        return (
+                          <td key={d.iso}
+                            className={styles.previewCell}
+                            title={result.holidayName ? `🎉 ${result.holidayName}` : st.label}
+                            style={{background: st.bg, borderColor: st.border}}
+                          >
+                            {result.price != null ? (
+                              <span style={{color: st.color, fontWeight:600, fontSize:'0.78rem', whiteSpace:'nowrap'}}>
+                                {(result.price/1000).toFixed(0)}k
+                              </span>
+                            ) : (
+                              <span style={{color:'#d1d5db',fontSize:'0.72rem'}}>—</span>
+                            )}
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        ))
+      )}
     </div>
   )
 }
 
-function ModalFooter({ onCancel, onSave, saving }) {
-  return (
-    <div className={styles.modalFooter}>
-      <button className={styles.btnCancel} onClick={onCancel}>Hủy</button>
-      <button className={styles.btnGreen} onClick={onSave} disabled={saving}>
-        {saving ? '⏳ Đang lưu...' : '💾 Lưu'}
-      </button>
-    </div>
-  )
-}
-
-function TypeBadge({ type }) {
-  return <span className={styles.typeBadge}>{type}</span>
-}
-
-function EmptyState({ icon, text }) {
-  return (
-    <div className={styles.emptyBox}>
-      <div className={styles.emptyIcon}>{icon}</div>
-      <p>{text}</p>
-    </div>
-  )
-}
-
 // ════════════════════════════════════════════════════════════════
-// MAIN — PricingManagement
+// MAIN
 // ════════════════════════════════════════════════════════════════
 export default function PricingManagement() {
   const [fields, setFields] = useState([])
@@ -666,32 +961,17 @@ export default function PricingManagement() {
 
   const TABS = [
     { key: 'pricing', label: '💰 Bảng giá sân' },
-    { key: 'bulk',    label: '⚡ Áp giá hàng loạt' },
     { key: 'holiday', label: '🎉 Giá ngày lễ' },
+    { key: 'preview', label: '📅 Preview 14 ngày' },
   ]
 
   return (
     <div className={styles.page}>
       <div className={styles.pageHeader}>
         <h1>💰 Quản lý giá sân</h1>
-        <p className={styles.pageDesc}>
-          Thiết lập giá → Hệ thống tự sinh slot → Khách đặt sân
-        </p>
+        <p className={styles.pageDesc}>Giá ngày thường → Cuối tuần tự tính × 1.25 → Ngày lễ theo %</p>
       </div>
 
-      {/* Flow indicator */}
-      <div className={styles.flow}>
-        {['🏟️ Tạo sân', '💰 Đặt giá', '📅 Tự sinh slot', '⚽ Khách đặt sân'].map((step, i) => (
-          <>
-            <span key={step} className={`${styles.flowStep} ${i === 1 ? styles.flowStepActive : ''}`}>
-              {step}
-            </span>
-            {i < 3 && <span key={`a${i}`} className={styles.flowArrow}>→</span>}
-          </>
-        ))}
-      </div>
-
-      {/* Tabs */}
       <div className={styles.tabs}>
         {TABS.map(t => (
           <button key={t.key}
@@ -703,9 +983,9 @@ export default function PricingManagement() {
       </div>
 
       <div className={styles.tabContent}>
-        {tab === 'pricing' && <TabFieldPricing  fields={fields} />}
-        {tab === 'bulk'    && <TabBulkPricing    fields={fields} />}
+        {tab === 'pricing' && <TabFieldPricing fields={fields} />}
         {tab === 'holiday' && <TabHolidayPricing fields={fields} />}
+        {tab === 'preview' && <TabPricePreview fields={fields} />}
       </div>
     </div>
   )

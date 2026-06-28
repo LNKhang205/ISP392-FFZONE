@@ -85,3 +85,87 @@
   padding: 80px 0; color: #64748b;
 }
 .empty span { font-size: 48px; }
+
+/* ── Venue service button ─────────────────────────────── */
+.venueServiceBtn {
+  padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+  background: #f0fdf4; color: #16a34a; border: 1.5px solid #86efac; cursor: pointer;
+  transition: all .15s;
+}
+.venueServiceBtn:hover { background: #dcfce7; border-color: #4ade80; }
+.venueServiceBtn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── Venue modal ──────────────────────────────────────── */
+.modalOverlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45);
+  z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.modalBox {
+  background: #fff; border-radius: 16px; width: 100%; max-width: 520px;
+  max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,.2);
+}
+.modalHeader {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 20px 14px; border-bottom: 1px solid #f1f5f9;
+}
+.modalHeader h2 { font-size: 16px; font-weight: 800; color: #0f172a; margin: 0; }
+.modalClose {
+  background: none; border: none; font-size: 18px; color: #94a3b8;
+  cursor: pointer; padding: 4px 8px; border-radius: 6px;
+}
+.modalClose:hover { background: #f1f5f9; color: #475569; }
+
+.modalSection { padding: 16px 20px 0; }
+.modalSectionTitle { font-size: 13.5px; font-weight: 700; color: #475569; margin: 0 0 10px; }
+
+.venueError {
+  margin: 12px 20px 0; padding: 10px 14px; background: #fef2f2;
+  border: 1px solid #fecaca; border-radius: 8px; color: #b91c1c; font-size: 13px;
+}
+.venueLoading { display: flex; align-items: center; gap: 12px; padding: 32px 20px; color: #64748b; }
+.venueHint { font-size: 13px; color: #9ca3af; margin: 0; }
+
+/* Danh sách dịch vụ trong modal */
+.venueServiceList { display: flex; flex-direction: column; gap: 8px; }
+.venueServiceRow {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0;
+}
+.venueServiceInfo { display: flex; flex-direction: column; gap: 2px; }
+.venueServiceName { font-size: 13.5px; font-weight: 600; color: #0f172a; }
+.venueServicePrice { font-size: 12px; color: #64748b; }
+
+.qtyControl { display: flex; align-items: center; gap: 10px; }
+.qtyControl button {
+  width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid #16a34a;
+  background: #fff; color: #16a34a; font-size: 14px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.qtyControl button:hover { background: #f0fdf4; }
+.qtyControl span { font-size: 13.5px; font-weight: 700; color: #0f172a; min-width: 18px; text-align: center; }
+
+/* Voucher trong modal */
+.venueVoucherList { display: flex; flex-direction: column; gap: 8px; }
+.venueVoucherItem {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px; border-radius: 8px; border: 1.5px solid #e2e8f0;
+  background: #f8fafc; cursor: pointer; transition: all .15s;
+}
+.venueVoucherItem:hover { border-color: #86efac; background: #f0fdf4; }
+.venueVoucherSelected { border-color: #16a34a !important; background: #f0fdf4 !important; }
+.venueVoucherCode { font-size: 13px; font-weight: 800; color: #16a34a; }
+.venueVoucherDiscount { font-size: 12.5px; color: #dc2626; font-weight: 600; }
+.voucherCheck { font-size: 16px; font-weight: 900; color: #16a34a; }
+
+/* Tóm tắt + submit */
+.venueSummary {
+  margin: 16px 20px 0; padding: 14px; background: #f8fafc;
+  border-radius: 10px; border: 1px solid #e2e8f0;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.venueSummaryRow { display: flex; justify-content: space-between; font-size: 13.5px; color: #475569; }
+.venueSummaryTotal { font-size: 15px; font-weight: 800; color: #0f172a; padding-top: 8px; border-top: 1px solid #e2e8f0; }
+
+.venueSubmitBtn { width: calc(100% - 40px); margin: 16px 20px 20px; padding: 12px; font-size: 14px; font-weight: 700; }
+.venueSubmitBtn:disabled { opacity: .6; cursor: not-allowed; }

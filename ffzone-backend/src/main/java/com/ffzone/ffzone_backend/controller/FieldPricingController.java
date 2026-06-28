@@ -69,6 +69,15 @@ public class FieldPricingController {
     }
 
     /**
+     * HOLIDAY đang có hiệu lực hoặc sắp có (trong 30 ngày tới).
+     * Public — BookingPage dùng để hiển thị banner thông báo.
+     */
+    @GetMapping("/holidays/current")
+    public ResponseEntity<List<FieldPricingResponse>> getCurrentHolidays() {
+        return ResponseEntity.ok(pricingService.findCurrentHolidays());
+    }
+
+    /**
      * Chỉ lấy các bản ghi HOLIDAY đang active.
      * Dùng bởi tab "Giá ngày lễ" trong PricingManagement.
      */
@@ -93,16 +102,32 @@ public class FieldPricingController {
 
     /**
      * Áp giá ngày lễ cho nhiều sân cùng lúc.
-     * Tạo bản ghi dayOfWeek=HOLIDAY trong bảng field_pricing.
-     * Body: {
-     *   holidayName, effectiveFrom, effectiveTo, increasePercentage,
-     *   fieldIds?: [...] | fieldType?: "5V5" | (cả hai null = tất cả sân)
-     * }
      */
     @PostMapping("/holiday/bulk")
     @PreAuthorize("hasRole('IT_ADMIN')")
     public ResponseEntity<List<FieldPricingResponse>> createHolidayBulk(
             @RequestBody FieldPricingRequest req) {
         return ResponseEntity.ok(pricingService.createHolidayBulk(req));
+    }
+
+    /**
+     * Áp giá ngày thường + cuối tuần hàng loạt cho nhiều sân.
+     * Body: { fieldIds: [...], weekdayPrice, startTime, endTime, effectiveFrom }
+     */
+    @PostMapping("/bulk-apply")
+    @PreAuthorize("hasRole('IT_ADMIN')")
+    public ResponseEntity<Integer> bulkApply(@RequestBody FieldPricingRequest req) {
+        return ResponseEntity.ok(pricingService.bulkApply(req));
+    }
+
+    /**
+     * Cập nhật thời gian áp dụng cho tất cả bản ghi của 1 dịp lễ.
+     * Dùng khi muốn tái sử dụng holiday đã tạo mà không cần tạo lại.
+     * Body: { holidayName, effectiveFrom, effectiveTo }
+     */
+    @PutMapping("/holiday/update-dates")
+    @PreAuthorize("hasRole('IT_ADMIN')")
+    public ResponseEntity<Integer> updateHolidayDates(@RequestBody FieldPricingRequest req) {
+        return ResponseEntity.ok(pricingService.updateHolidayDates(req));
     }
 }

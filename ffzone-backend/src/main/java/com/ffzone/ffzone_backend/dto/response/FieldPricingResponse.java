@@ -1,6 +1,7 @@
 package com.ffzone.ffzone_backend.dto.response;
 
 import com.ffzone.ffzone_backend.entity.FieldPricing;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Data;
 
@@ -33,6 +34,7 @@ public class FieldPricingResponse {
     private LocalTime endTime;
     private LocalDate effectiveFrom;
     private LocalDate effectiveTo;
+    @JsonProperty("isActive")
     private Boolean isActive;
 
     // Chỉ có giá trị khi dayOfWeek = HOLIDAY

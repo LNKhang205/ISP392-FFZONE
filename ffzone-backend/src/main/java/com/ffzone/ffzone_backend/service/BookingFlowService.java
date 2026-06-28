@@ -41,13 +41,15 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class BookingFlowService {
 
-    private final BookingRepository      bookingRepository;
-    private final BookingSlotRepository  bookingSlotRepository;
+    private final BookingRepository        bookingRepository;
+    private final BookingSlotRepository    bookingSlotRepository;
     private final BookingServiceRepository bookingServiceRepository;
-    private final FieldSlotRepository    fieldSlotRepository;
-    private final FieldRepository        fieldRepository;
-    private final VoucherRepository      voucherRepository;
-    private final RefundRepository       refundRepository;
+    private final FieldSlotRepository      fieldSlotRepository;
+    private final FieldRepository          fieldRepository;
+    private final VoucherRepository        voucherRepository;
+    private final UserVoucherRepository    userVoucherRepository;
+    private final ServiceRepository        serviceRepository;
+    private final RefundRepository         refundRepository;
 
     private static final int    MAX_CONSECUTIVE_SLOTS = 3;   // BR-25
     private static final int    PAYMENT_LOCK_MINUTES   = 10; // BR-27: tổng 10 phút (đặt + thanh toán), không tách 5+5
@@ -86,7 +88,18 @@ public class BookingFlowService {
         BigDecimal discountAmount = BigDecimal.ZERO;
         if (req.getVoucherCode() != null && !req.getVoucherCode().isBlank()) {
             voucher = validateAndResolveVoucher(req.getVoucherCode().trim().toUpperCase(), fieldAmount);
+            // Kiểm tra user sở hữu voucher này và chưa dùng
+            UserVoucher userVoucher = userVoucherRepository
+                    .findByAccountIdAndVoucherId(account.getId(), voucher.getId())
+                    .orElseThrow(() -> AppException.badRequest("Bạn không sở hữu mã giảm giá này"));
+            if (userVoucher.getIsUsed())
+                throw AppException.badRequest("Mã giảm giá này đã được sử dụng");
+            // Bug fix: tính discount trên tổng đơn (sân + dịch vụ nếu có), không chỉ fieldAmount
             discountAmount = calculateDiscount(voucher, fieldAmount);
+            // Mark UserVoucher là đã dùng
+            userVoucher.setIsUsed(true);
+            userVoucher.setUsedAt(LocalDateTime.now());
+            userVoucherRepository.save(userVoucher);
         }
 
         BigDecimal totalAmount = fieldAmount.subtract(discountAmount); // service_amount=0 lúc tạo
@@ -133,6 +146,126 @@ public class BookingFlowService {
         return BookingResponse.from(booking, savedSlots);
     }
 
+    // ── Add services at venue (CHECKED_IN) ──────────────────────────────────
+ 
+    /**
+     * Đặt thêm dịch vụ khi đang sử dụng sân (status = IN_PROGRESS / CONFIRMED).
+     * - Booking chỉ được dùng tối đa 1 voucher suốt vòng đời.
+     * - Nếu booking chưa có voucher, user có thể áp 1 voucher tại đây.
+     * - Trả về URL thanh toán VNPay cho phần dịch vụ mới thêm.
+     * - ServiceAmount và totalAmount được cập nhật sau khi thêm.
+     */
+    @Transactional
+    public AddVenueServiceResult addServicesAtVenue(
+            Account account,
+            UUID bookingId,
+            List<AddVenueServiceItem> items,
+            String voucherCode) {
+ 
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> AppException.notFound("Booking không tồn tại: " + bookingId));
+ 
+        // Chỉ user của booking mới được thao tác
+        if (!booking.getAccount().getId().equals(account.getId()))
+            throw AppException.forbidden("Không có quyền thao tác booking này");
+ 
+        // Chỉ cho phép khi booking đang CONFIRMED hoặc IN_PROGRESS (đã check-in)
+        if (booking.getStatus() != BookingStatus.CONFIRMED
+                && booking.getStatus() != BookingStatus.IN_PROGRESS)
+            throw AppException.badRequest("Chỉ có thể thêm dịch vụ khi booking đã xác nhận hoặc đang diễn ra");
+ 
+        // Validate items
+        if (items == null || items.isEmpty())
+            throw AppException.badRequest("Vui lòng chọn ít nhất 1 dịch vụ");
+ 
+        // Tính tổng tiền dịch vụ mới
+        BigDecimal newServiceTotal = BigDecimal.ZERO;
+        List<ServiceLineItem> lines = new java.util.ArrayList<>();
+        for (AddVenueServiceItem item : items) {
+            com.ffzone.ffzone_backend.entity.Service svc = serviceRepository
+                    .findById(item.serviceId())
+                    .orElseThrow(() -> AppException.notFound("Dịch vụ không tồn tại: " + item.serviceId()));
+            if (!svc.getIsActive())
+                throw AppException.badRequest("Dịch vụ không khả dụng: " + svc.getName());
+            int qty = Math.max(1, item.quantity());
+            BigDecimal lineTotal = svc.getPrice().multiply(BigDecimal.valueOf(qty));
+            newServiceTotal = newServiceTotal.add(lineTotal);
+            lines.add(new ServiceLineItem(svc, qty, lineTotal));
+        }
+ 
+        // Xử lý voucher: booking chỉ được 1 voucher duy nhất suốt vòng đời
+        BigDecimal newDiscountAmount = BigDecimal.ZERO;
+        Voucher voucher = null;
+        if (voucherCode != null && !voucherCode.isBlank()) {
+            if (booking.getVoucher() != null)
+                throw AppException.badRequest("Booking này đã sử dụng voucher. Mỗi booking chỉ được áp 1 voucher.");
+            voucher = validateAndResolveVoucher(voucherCode.trim().toUpperCase(), newServiceTotal);
+            UserVoucher userVoucher = userVoucherRepository
+                    .findByAccountIdAndVoucherId(account.getId(), voucher.getId())
+                    .orElseThrow(() -> AppException.badRequest("Bạn không sở hữu mã giảm giá này"));
+            if (userVoucher.getIsUsed())
+                throw AppException.badRequest("Mã giảm giá này đã được sử dụng");
+            newDiscountAmount = calculateDiscount(voucher, newServiceTotal);
+            userVoucher.setIsUsed(true);
+            userVoucher.setUsedAt(LocalDateTime.now());
+            userVoucherRepository.save(userVoucher);
+            // Gắn voucher vào booking + tăng usedQuantity
+            booking.setVoucher(voucher);
+            booking.setDiscountAmount(booking.getDiscountAmount().add(newDiscountAmount));
+            voucher.setUsedQuantity(voucher.getUsedQuantity() + 1);
+            voucherRepository.save(voucher);
+        }
+ 
+        // Lưu BookingService items
+        for (ServiceLineItem line : lines) {
+            bookingServiceRepository
+                .findByBookingIdAndServiceId(bookingId, line.svc().getId())
+                .ifPresentOrElse(existing -> {
+                    int newQty = existing.getQuantity() + line.qty();
+                    existing.setQuantity(newQty);
+                    existing.setTotalPrice(existing.getUnitPrice().multiply(BigDecimal.valueOf(newQty)));
+                    bookingServiceRepository.save(existing);
+                }, () -> {
+                    BookingService bs = BookingService.builder()
+                            .booking(booking)
+                            .service(line.svc())
+                            .quantity(line.qty())
+                            .unitPrice(line.svc().getPrice())
+                            .totalPrice(line.total())
+                            .addedBy(account)
+                            .build();
+                    bookingServiceRepository.save(bs);
+                });
+        }
+ 
+        // Cập nhật serviceAmount và totalAmount
+        BigDecimal totalServiceAmount = bookingServiceRepository.findByBookingId(bookingId)
+                .stream().map(BookingService::getTotalPrice).reduce(BigDecimal.ZERO, BigDecimal::add);
+        booking.setServiceAmount(totalServiceAmount);
+        booking.setTotalAmount(
+                booking.getFieldAmount()
+                        .add(totalServiceAmount)
+                        .add(booking.getCompensationAmount())
+                        .subtract(booking.getDiscountAmount())
+        );
+        bookingRepository.save(booking);
+ 
+        // Số tiền cần thanh toán thêm = dịch vụ mới - giảm giá mới
+        BigDecimal payAmount = newServiceTotal.subtract(newDiscountAmount);
+        if (payAmount.compareTo(BigDecimal.ZERO) < 0) payAmount = BigDecimal.ZERO;
+ 
+        log.info("[Booking] Thêm dịch vụ tại sân cho {} - {} dịch vụ - tổng thêm {}đ",
+                booking.getBookingCode(), lines.size(), payAmount);
+ 
+        return new AddVenueServiceResult(booking.getId(), booking.getBookingCode(), payAmount);
+    }
+ 
+    /** DTO nội bộ cho kết quả addServicesAtVenue */
+    public record AddVenueServiceResult(UUID bookingId, String bookingCode, BigDecimal payAmount) {}
+    /** DTO nội bộ cho từng dịch vụ trong request */
+    public record AddVenueServiceItem(UUID serviceId, int quantity) {}
+    private record ServiceLineItem(com.ffzone.ffzone_backend.entity.Service svc, int qty, BigDecimal total) {}
+ 
     // ── Query ────────────────────────────────────────────────────────────────
 
     @Transactional
@@ -249,16 +382,16 @@ public class BookingFlowService {
         return voucher;
     }
 
-    /** BR-78: discount không được vượt quá field_amount. */
-    private BigDecimal calculateDiscount(Voucher voucher, BigDecimal fieldAmount) {
+    /** BR-78: discount không được vượt quá tổng đơn hàng (field + service). */
+    private BigDecimal calculateDiscount(Voucher voucher, BigDecimal orderAmount) {
         BigDecimal discount;
         if (voucher.getVoucherType() == VoucherType.PERCENT) {
-            discount = fieldAmount.multiply(voucher.getDiscountValue())
+            discount = orderAmount.multiply(voucher.getDiscountValue())
                     .divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP);
         } else {
             discount = voucher.getDiscountValue();
         }
-        return discount.min(fieldAmount); // cap tại field_amount
+        return discount.min(orderAmount); // cap tại tổng đơn
     }
 
     private void rollbackVoucherUsage(Booking booking) {

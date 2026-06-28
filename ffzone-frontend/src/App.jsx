@@ -20,6 +20,7 @@ import CartPage from './pages/user/CartPage'
 import BookingConfirmPage from './pages/public/BookingConfirmPage'
 import PaymentResultPage from './pages/public/PaymentResultPage'
 import MyBookingsPage from './pages/user/MyBookingsPage'
+import MyVouchersPage from './pages/user/MyVouchersPage'
 
 function RequireAuth({ children }) {
   const { isLoggedIn } = useAuth()
@@ -57,7 +58,7 @@ export default function App() {
       <Route path="/services" element={<PublicLayout><ServicesPage /></PublicLayout>} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
-
+      
       {/* Payment result — VNPay redirect trình duyệt về đây, không cần Navbar/Footer */}
       <Route path="/payment-result" element={<PaymentResultPage />} />
 
@@ -67,14 +68,18 @@ export default function App() {
           <PublicLayout><BookingConfirmPage /></PublicLayout>
         </RequireRole>
       } />
-
+  
       {/* My bookings — CUSTOMER only */}
       <Route path="/profile/bookings" element={
         <RequireRole roles={['USER']}>
           <PublicLayout><MyBookingsPage /></PublicLayout>
         </RequireRole>
       } />
-
+      <Route path="/my-vouchers" element={
+        <RequireRole roles={['USER']}>
+          <PublicLayout><MyVouchersPage /></PublicLayout>
+        </RequireRole>
+      } />
       {/* Cart — CUSTOMER only */}
       <Route path="/cart" element={
         <RequireRole roles={['USER']}>

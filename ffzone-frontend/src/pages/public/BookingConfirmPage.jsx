@@ -4,6 +4,7 @@ import api from '../../services/api'
 import { createBooking } from '../../api/bookingApi'
 import { createPaymentUrl } from '../../api/paymentApi'
 import { checkoutCartToBooking, getActiveServices } from '../../api/serviceApi'
+import { getMyVouchers } from '../../api/voucherApi'
 import { useCart } from '../../context/CartContext'
 import styles from './BookingConfirmPage.module.css'
 
@@ -49,6 +50,9 @@ export default function BookingConfirmPage() {
   const [error, setError] = useState('')
 
   const [voucherCode, setVoucherCode] = useState('')
+  const [selectedVoucherId, setSelectedVoucherId] = useState(null)
+  const [myVouchers, setMyVouchers] = useState([])
+  const [vouchersLoading, setVouchersLoading] = useState(true)
   const [includeCart, setIncludeCart] = useState(true)
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -104,6 +108,30 @@ export default function BookingConfirmPage() {
     }
   }
 
+  // Load voucher của user từ DB
+  useEffect(() => {
+    getMyVouchers()
+      .then(data => {
+        const now = new Date()
+        // Chỉ hiện voucher còn hiệu lực và chưa dùng
+        const valid = data.filter(v => !v.isUsed && new Date(v.endDate) > now)
+        setMyVouchers(valid)
+      })
+      .catch(() => setMyVouchers([]))
+      .finally(() => setVouchersLoading(false))
+  }, [])
+
+  const handleSelectVoucher = (v) => {
+    if (selectedVoucherId === v.id) {
+      // Bỏ chọn nếu click lại voucher đang chọn
+      setSelectedVoucherId(null)
+      setVoucherCode('')
+    } else {
+      setSelectedVoucherId(v.id)
+      setVoucherCode(v.code)
+    }
+  }
+
   // Load chi tiết các slot đã chọn từ BookingPage
   useEffect(() => {
     if (slotIds.length === 0) { setLoading(false); return }
@@ -127,7 +155,15 @@ export default function BookingConfirmPage() {
   const fieldAmount = slots.reduce((sum, s) => sum + Number(s.price || 0), 0)
   const cartItems = cart?.items ?? []
   const cartTotal = includeCart ? Number(cart?.total ?? 0) : 0
-  const estimatedTotal = fieldAmount + cartTotal // chưa trừ voucher — số thật do backend tính
+
+  // Tính giảm giá ước tính dựa trên voucher đã chọn (frontend estimate, số thật do backend tính)
+  const selectedVoucher = myVouchers.find(v => v.id === selectedVoucherId) ?? null
+  const discountAmount = selectedVoucher
+    ? selectedVoucher.voucherType === 'PERCENT'
+      ? Math.round((fieldAmount + cartTotal) * Number(selectedVoucher.discountValue) / 100)
+      : Math.min(Number(selectedVoucher.discountValue), fieldAmount + cartTotal)
+    : 0
+  const estimatedTotal = fieldAmount + cartTotal - discountAmount
 
   const handleConfirm = async () => {
     if (slots.length === 0) return
@@ -274,14 +310,50 @@ export default function BookingConfirmPage() {
             </div>
 
             <div className={styles.card}>
-              <h2 className={styles.cardTitle}>🎟️ Mã giảm giá</h2>
-              <input
-                className={styles.input}
-                placeholder="Nhập mã voucher (không bắt buộc)"
-                value={voucherCode}
-                onChange={e => setVoucherCode(e.target.value.toUpperCase())}
-              />
-              <p className={styles.hint}>Mã sẽ được kiểm tra khi bạn xác nhận đặt sân.</p>
+              <h2 className={styles.cardTitle}>🎟️ Voucher của bạn</h2>
+              {vouchersLoading ? (
+                <p className={styles.hint}>Đang tải voucher...</p>
+              ) : myVouchers.length === 0 ? (
+                <p className={styles.hint}>
+                  Bạn không có voucher nào còn hiệu lực.{' '}
+                  <Link to="/vouchers" style={{ color: '#16a34a', fontWeight: 600 }}>Nhận voucher ngay →</Link>
+                </p>
+              ) : (
+                <div className={styles.voucherList}>
+                  {myVouchers.map(v => {
+                    const selected = selectedVoucherId === v.id
+                    return (
+                      <div
+                        key={v.id}
+                        className={`${styles.voucherItem} ${selected ? styles.voucherSelected : ''}`}
+                        onClick={() => handleSelectVoucher(v)}
+                      >
+                        <div className={styles.voucherLeft}>
+                          <span className={styles.voucherCode}>{v.code}</span>
+                          <span className={styles.voucherDiscount}>
+                            {v.voucherType === 'PERCENT'
+                              ? `Giảm ${v.discountValue}%`
+                              : `Giảm ${Number(v.discountValue).toLocaleString('vi-VN')}₫`}
+                          </span>
+                          <span className={styles.voucherExpiry}>
+                            HSD: {new Date(v.endDate).toLocaleDateString('vi-VN')}
+                          </span>
+                        </div>
+                        <div className={styles.voucherRight}>
+                          {selected
+                            ? <span className={styles.voucherCheck}>✓ Đã chọn</span>
+                            : <span className={styles.voucherUse}>Dùng</span>}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+              {selectedVoucherId && (
+                <p className={styles.hint} style={{ marginTop: 8, color: '#16a34a' }}>
+                  ✅ Đã áp mã <strong>{voucherCode}</strong>. Giảm giá sẽ được tính khi thanh toán.
+                </p>
+              )}
             </div>
 
             <div className={styles.card}>
@@ -309,20 +381,31 @@ export default function BookingConfirmPage() {
                 <span>{cartTotal.toLocaleString('vi-VN')}₫</span>
               </div>
             )}
-            {voucherCode && (
-              <div className={styles.summaryRow}>
-                <span>Mã giảm giá</span>
-                <span>{voucherCode}</span>
+            {selectedVoucher && (
+              <div className={styles.summaryRow} style={{ color: '#16a34a' }}>
+                <span>🎟️ {selectedVoucher.code}</span>
+                <span>- {discountAmount.toLocaleString('vi-VN')}₫</span>
               </div>
             )}
             <div className={styles.divider} />
             <div className={`${styles.summaryRow} ${styles.totalRow}`}>
-              <span>Tạm tính</span>
-              <span>{estimatedTotal.toLocaleString('vi-VN')}₫</span>
+              <span>Tạm tính{selectedVoucher ? ' (ước tính)' : ''}</span>
+              <span style={selectedVoucher ? { color: '#dc2626' } : {}}>{estimatedTotal.toLocaleString('vi-VN')}₫</span>
             </div>
-            <p className={styles.hint}>
-              💡 Số tiền cuối cùng (sau giảm giá nếu có) sẽ hiển thị trên trang thanh toán VNPay.
-            </p>
+            {selectedVoucher && (
+              <p className={styles.hint} style={{ color: '#16a34a', marginTop: 4 }}>
+                ✅ Đã áp voucher giảm{' '}
+                {selectedVoucher.voucherType === 'PERCENT'
+                  ? `${selectedVoucher.discountValue}%`
+                  : `${Number(selectedVoucher.discountValue).toLocaleString('vi-VN')}₫`}.
+                {' '}Số tiền chính xác sẽ được xác nhận khi thanh toán.
+              </p>
+            )}
+            {!selectedVoucher && (
+              <p className={styles.hint}>
+                💡 Số tiền cuối cùng (sau giảm giá nếu có) sẽ hiển thị trên trang thanh toán VNPay.
+              </p>
+            )}
             <div className={styles.deadlineBox}>
               ⏱️ Bạn có <strong>10 phút</strong> để hoàn tất thanh toán sau khi xác nhận.
             </div>

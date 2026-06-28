@@ -1,7 +1,7 @@
 /* ── Layout ── */
 .root {
   min-height: 100vh;
-  background: #f9fafb;
+  background: #f8fafc;
   display: flex;
   flex-direction: column;
 }
@@ -18,118 +18,229 @@
   position: sticky;
   top: 0;
   z-index: 50;
-  box-shadow: 0 1px 4px rgba(0,0,0,.04);
+  box-shadow: 0 1px 4px rgba(0,0,0,.05);
 }
-
-.topbarLeft { display: flex; align-items: center; gap: 12px; }
-.logo { font-size: 1.2rem; font-weight: 600; color: #111; }
+.topbarLeft  { display: flex; align-items: center; gap: 12px; }
+.topbarRight { display: flex; align-items: center; gap: 10px; }
+.logo { font-size: 1.2rem; font-weight: 700; color: #0f172a; }
 .roleTag {
-  padding: 2px 10px;
-  background: #fef9c3;
-  color: #854d0e;
+  padding: 3px 10px;
+  background: #fef3c7;
+  color: #92400e;
   border-radius: 999px;
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 600;
 }
-
-.topbarRight { display: flex; align-items: center; gap: 10px; }
 .welcome { font-size: 0.875rem; color: #374151; }
 
+/* ── Buttons ── */
 .btnOutline {
   padding: 6px 14px;
   border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border-radius: 7px;
   background: #fff;
   font-size: 0.85rem;
   cursor: pointer;
   color: #374151;
+  transition: background 0.15s;
 }
 .btnOutline:hover { background: #f3f4f6; }
 
 .btnLogout {
   padding: 6px 14px;
   border: 1px solid #fca5a5;
-  border-radius: 6px;
+  border-radius: 7px;
   background: #fff;
   font-size: 0.85rem;
   cursor: pointer;
   color: #dc2626;
+  transition: background 0.15s;
 }
 .btnLogout:hover { background: #fee2e2; }
 
 /* ── Body ── */
-.body { padding: 24px; max-width: 1100px; margin: 0 auto; width: 100%; }
+.body {
+  padding: 28px 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
 
+/* ── Page header ── */
 .pageHeader {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 16px;
-  margin-bottom: 24px;
+  margin-bottom: 28px;
   flex-wrap: wrap;
 }
-.pageHeader h1 { margin: 0; font-size: 1.4rem; font-weight: 600; color: #111; }
+.pageHeader h1 {
+  margin: 0 0 4px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+.pageSubtitle {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
 
 /* ── Period tabs ── */
-.periodTabs { display: flex; gap: 4px; margin-left: auto; }
+.periodTabs { display: flex; gap: 4px; }
 .periodTab {
-  padding: 6px 14px;
-  border-radius: 6px;
+  padding: 7px 16px;
+  border-radius: 7px;
   border: 1px solid #d1d5db;
   background: #fff;
   font-size: 0.85rem;
   cursor: pointer;
   color: #374151;
+  transition: all 0.15s;
 }
+.periodTab:hover { background: #f3f4f6; }
 .periodActive {
   background: #1e293b;
   color: #fff;
   border-color: #1e293b;
 }
 
+/* ── Loading / Error ── */
+.loadingWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 64px 0;
+  color: #6b7280;
+  gap: 12px;
+}
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.errorBox {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 10px;
+  padding: 16px 20px;
+  color: #991b1b;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
 /* ── Stats grid ── */
 .statsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 16px;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
-
 .statCard {
   background: #fff;
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 20px;
   border: 1px solid #e5e7eb;
   border-top-width: 3px;
   box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  transition: box-shadow 0.2s;
 }
+.statCard:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+.statCardTop { margin-bottom: 8px; }
+.statIcon { font-size: 1.4rem; }
 .statValue {
-  font-size: 1.8rem;
+  font-size: 1.7rem;
   font-weight: 700;
-  line-height: 1;
-  margin-bottom: 6px;
+  line-height: 1.1;
+  margin-bottom: 4px;
 }
-.statLabel {
-  font-size: 0.85rem;
-  color: #6b7280;
-}
-.statSub {
-  font-size: 0.75rem;
-  color: #9ca3af;
-  margin-top: 4px;
-}
+.statLabel { font-size: 0.85rem; color: #6b7280; font-weight: 500; }
+.statSub   { font-size: 0.75rem; color: #9ca3af; margin-top: 4px; }
 
 /* ── Section ── */
 .section {
   background: #fff;
-  border-radius: 10px;
-  padding: 20px;
+  border-radius: 12px;
+  padding: 20px 24px;
   border: 1px solid #e5e7eb;
   box-shadow: 0 1px 3px rgba(0,0,0,.04);
   margin-bottom: 20px;
 }
-.section h2 { margin: 0 0 16px; font-size: 1rem; font-weight: 600; color: #111; }
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.sectionHeader h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+.sectionHint { font-size: 0.8rem; color: #9ca3af; }
 
-.hint { color: #6b7280; font-size: 0.875rem; margin-bottom: 12px; }
+/* ── Chart ── */
+.chartWrapper {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+}
+.chartEmpty {
+  text-align: center;
+  color: #9ca3af;
+  padding: 40px 0;
+  font-size: 0.875rem;
+}
+.chartTooltip {
+  position: fixed;
+  background: #1e293b;
+  color: #fff;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.8rem;
+  pointer-events: none;
+  z-index: 100;
+  transform: translate(-50%, -110%);
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0,0,0,.2);
+  line-height: 1.6;
+}
+
+/* ── Tab nav ── */
+.tabNav {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0;
+}
+.tabBtn {
+  padding: 9px 18px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: #6b7280;
+  font-weight: 500;
+  transition: all 0.15s;
+  margin-bottom: -1px;
+}
+.tabBtn:hover { color: #374151; }
+.tabActive {
+  color: #3b82f6;
+  border-bottom-color: #3b82f6;
+}
 
 /* ── Table ── */
 .tableWrap { overflow-x: auto; }
@@ -140,38 +251,76 @@
 }
 .table th {
   text-align: left;
-  padding: 10px 12px;
+  padding: 10px 14px;
   color: #6b7280;
-  font-weight: 500;
-  font-size: 0.8rem;
-  border-bottom: 1px solid #e5e7eb;
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 2px solid #f1f5f9;
+  white-space: nowrap;
 }
 .table td {
-  padding: 11px 12px;
+  padding: 12px 14px;
   color: #374151;
   border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
 }
 .table tr:last-child td { border-bottom: none; }
-.monoId { font-family: monospace; color: #9ca3af; font-size: 0.8rem; }
+.table tr:hover td { background: #f8fafc; }
+
+.monoId { font-family: monospace; color: #6b7280; font-size: 0.8rem; }
 
 .badge {
   display: inline-block;
-  padding: 2px 10px;
+  padding: 3px 10px;
   border-radius: 999px;
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
-.btnPrimary {
-  padding: 9px 20px;
-  background: #3b82f6;
-  color: #fff;
-  border: none;
-  border-radius: 7px;
-  font-size: 0.9rem;
-  cursor: pointer;
-}
-.btnPrimary:hover { background: #2563eb; }
+/* ── Field table specific ── */
+.fieldName { font-weight: 600; color: #111827; }
+.fieldCode { font-size: 0.75rem; color: #9ca3af; font-family: monospace; }
 
-.loading { color: #6b7280; padding: 32px 0; }
-.empty   { color: #6b7280; font-size: 0.875rem; }
+.typeBadge {
+  padding: 2px 8px;
+  background: #ede9fe;
+  color: #5b21b6;
+  border-radius: 5px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Occupancy bar */
+.occBar {
+  height: 6px;
+  background: #f1f5f9;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 3px;
+}
+.occFill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+.occLabel { font-size: 0.75rem; color: #6b7280; }
+
+/* Mini revenue bar */
+.miniBar {
+  height: 3px;
+  background: #f1f5f9;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.miniBarFill {
+  height: 100%;
+  background: #bfdbfe;
+  border-radius: 2px;
+}
+
+.empty { color: #9ca3af; font-size: 0.875rem; padding: 16px 0; }
