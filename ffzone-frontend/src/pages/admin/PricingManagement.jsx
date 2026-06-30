@@ -62,12 +62,12 @@ function FormGroup({ label, required, hint, children }) {
     </div>
   )
 }
-function ModalFooter({ onCancel, onSave, saving, saveLabel = '💾 Lưu' }) {
+function ModalFooter({ onCancel, onSave, saving, saveLabel = 'Lưu' }) {
   return (
     <div className={styles.modalFooter}>
       <button className={styles.btnCancel} onClick={onCancel}>Hủy</button>
       <button className={styles.btnGreen} onClick={onSave} disabled={saving}>
-        {saving ? '⏳ Đang lưu...' : saveLabel}
+        {saving ? 'Đang lưu...' : saveLabel}
       </button>
     </div>
   )
@@ -91,10 +91,14 @@ function TabFieldPricing({ fields }) {
     api.get('/field-pricings')
       .then(r => {
         console.log('[Pricing] raw API response:', r.data)
-        // Lấy bản ghi WEEKDAY active mới nhất (effectiveFrom lớn nhất) cho mỗi sân
+        const today = todayStr()
+        // Lấy bản ghi WEEKDAY active, không hết hạn mới nhất cho mỗi sân
         const map = {}
         r.data
-          .filter(p => p.dayOfWeek === 'WEEKDAY' && (p.isActive !== false && p.active !== false))
+          .filter(p => p.dayOfWeek === 'WEEKDAY' && 
+                       (p.isActive !== false && p.active !== false) &&
+                       (p.effectiveFrom <= today) &&
+                       (p.effectiveTo == null || p.effectiveTo >= today))
           .forEach(p => {
             const existing = map[p.fieldId]
             if (!existing || (p.effectiveFrom || '') > (existing.effectiveFrom || '')) {
@@ -130,14 +134,27 @@ function TabFieldPricing({ fields }) {
     return Number(Object.entries(freq).sort((a,b) => b[1]-a[1])[0][0])
   }
 
+  const formatTimeStr = (t) => {
+    if (!t) return ''
+    if (Array.isArray(t)) {
+      const h = String(t[0]).padStart(2, '0')
+      const m = String(t[1]).padStart(2, '0')
+      return `${h}:${m}`
+    }
+    if (typeof t === 'string') {
+      return t.substring(0, 5)
+    }
+    return ''
+  }
+
   const openEdit = (field) => {
     const p = getPricing(field.id)
     setForm({
       fieldId:      field.id,
       fieldName:    field.name,
       weekdayPrice: p?.price || '',
-      startTime:    p?.startTime?.substring(0, 5) || '05:00',
-      endTime:      p?.endTime?.substring(0, 5)   || '23:30',
+      startTime:    formatTimeStr(p?.startTime) || '05:00',
+      endTime:      formatTimeStr(p?.endTime)   || '23:30',
       effectiveFrom: todayStr(),
     })
     setMsg('')
@@ -185,10 +202,10 @@ function TabFieldPricing({ fields }) {
         endTime:       form.endTime,
         effectiveFrom: form.effectiveFrom || null,
       })
-      setApplyMsg(`✅ Đã áp giá cho ${count.data} sân`)
+      setApplyMsg(`Đã áp giá cho ${count.data} sân`)
       setTimeout(() => { setApplyModal(null); load() }, 1200)
     } catch (e) {
-      setApplyMsg('❌ ' + (e.response?.data?.message || 'Lỗi'))
+      setApplyMsg(e.response?.data?.message || 'Lỗi')
     } finally { setSaving(false) }
   }
 
@@ -225,7 +242,7 @@ function TabFieldPricing({ fields }) {
                 </>
               )}
               <button className={styles.btnApplyType} onClick={() => openApplyType(type)}>
-                ⚡ Áp cho tất cả {TYPE_LABEL[type].toLowerCase()}
+                Áp cho tất cả {TYPE_LABEL[type].toLowerCase()}
               </button>
             </div>
           )
@@ -255,7 +272,7 @@ function TabFieldPricing({ fields }) {
               <tbody>
                 {g.fields.map(field => {
                   const p = getPricing(field.id)
-                  const wd = p?.price || null
+                  const wd = p?.price || getDefaultWeekdayPrice(field.type)
                   const hasCustom = !!p
                   return (
                     <tr key={field.id}>
@@ -270,7 +287,7 @@ function TabFieldPricing({ fields }) {
                         }
                       </td>
                       <td>
-                        <button className={styles.btnEdit} onClick={() => openEdit(field)}>✏️ Sửa</button>
+                        <button className={styles.btnEdit} onClick={() => openEdit(field)}>Sửa giá</button>
                       </td>
                     </tr>
                   )
@@ -283,7 +300,7 @@ function TabFieldPricing({ fields }) {
 
       {/* Modal sửa 1 sân */}
       {editModal && (
-        <Modal title={`✏️ Cập nhật giá: ${form.fieldName}`} onClose={() => setEditModal(null)}>
+        <Modal title={`Cập nhật giá: ${form.fieldName}`} onClose={() => setEditModal(null)}>
           <FormGroup label="Giá ngày thường (₫)" required>
             <input type="number" className={styles.input} min={0} step={1000}
               value={form.weekdayPrice}
@@ -310,14 +327,14 @@ function TabFieldPricing({ fields }) {
             <input type="date" className={styles.input} value={form.effectiveFrom}
               onChange={e => setForm(f => ({ ...f, effectiveFrom: e.target.value }))} />
           </FormGroup>
-          {msg && <p className={styles.errMsg}>❌ {msg}</p>}
+          {msg && <p className={styles.errMsg}>{msg}</p>}
           <ModalFooter onCancel={() => setEditModal(null)} onSave={handleSaveOne} saving={saving} />
         </Modal>
       )}
 
       {/* Modal áp dụng theo loại sân */}
       {applyModal && (
-        <Modal title={`⚡ Áp giá cho tất cả ${TYPE_LABEL[applyModal]}`} onClose={() => setApplyModal(null)}>
+        <Modal title={`Áp giá cho tất cả ${TYPE_LABEL[applyModal]}`} onClose={() => setApplyModal(null)}>
           <p className={styles.applyNote}>
             Sẽ áp dụng giá này cho <strong>tất cả {fields.filter(f => normalizeType(f.type) === applyModal).length} sân loại {TYPE_LABEL[applyModal]}</strong>.
           </p>
@@ -349,7 +366,7 @@ function TabFieldPricing({ fields }) {
           </FormGroup>
           {applyMsg && <p className={styles.bulkMsg}>{applyMsg}</p>}
           <ModalFooter onCancel={() => setApplyModal(null)} onSave={handleApplyAll}
-            saving={saving} saveLabel="⚡ Áp dụng tất cả" />
+            saving={saving} saveLabel="Áp dụng tất cả" />
         </Modal>
       )}
     </div>
@@ -777,10 +794,17 @@ function getEffectiveWeekdayPrice(fieldId, isoDate, allPricings) {
   return Number(candidates[0].price)
 }
 
+// Giá mặc định theo loại sân (dùng khi sân mới chưa có record pricing)
+function getDefaultWeekdayPrice(fieldType) {
+  const t = normalizeType(fieldType)
+  if (t === '7V7') return 240000
+  if (t === '9V9') return 300000
+  return 200000 // 5V5 hoặc mặc định
+}
+
 function calcPriceForDay(fieldId, fieldType, isoDate, allPricings, holidays) {
   const holiday = isDateInHoliday(isoDate, holidays)
   if (holiday) {
-    // Lấy giá HOLIDAY từ DB cho sân này trong khoảng ngày lễ đó
     const hP = allPricings.find(p =>
       p.fieldId === fieldId &&
       p.dayOfWeek === 'HOLIDAY' &&
@@ -796,7 +820,6 @@ function calcPriceForDay(fieldId, fieldType, isoDate, allPricings, holidays) {
   const isWE = d.getDay() === 0 || d.getDay() === 6
 
   if (isWE) {
-    // Ưu tiên bản ghi WEEKEND riêng
     const weCandidates = allPricings.filter(p =>
       p.fieldId === fieldId &&
       p.dayOfWeek === 'WEEKEND' &&
@@ -808,14 +831,17 @@ function calcPriceForDay(fieldId, fieldType, isoDate, allPricings, holidays) {
       weCandidates.sort((a,b) => (b.effectiveFrom||'').localeCompare(a.effectiveFrom||''))
       return { price: Number(weCandidates[0].price), type: 'weekend' }
     }
-    // Fallback: weekday × 1.25
     const wd = getEffectiveWeekdayPrice(fieldId, isoDate, allPricings)
     if (wd) return { price: Math.ceil(wd * 1.25 / 1000) * 1000, type: 'weekend' }
-    return { price: null, type: 'weekend' }
+    // Fallback: giá mặc định theo loại sân × 1.25
+    const defWd = getDefaultWeekdayPrice(fieldType)
+    return { price: Math.ceil(defWd * 1.25 / 1000) * 1000, type: 'weekend' }
   }
 
   const wd = getEffectiveWeekdayPrice(fieldId, isoDate, allPricings)
-  return { price: wd, type: 'weekday' }
+  if (wd) return { price: wd, type: 'weekday' }
+  // Fallback: giá mặc định theo loại sân
+  return { price: getDefaultWeekdayPrice(fieldType), type: 'weekday' }
 }
 
 const PRICE_TYPE_STYLE = {
@@ -954,22 +980,50 @@ function TabPricePreview({ fields }) {
 export default function PricingManagement() {
   const [fields, setFields] = useState([])
   const [tab, setTab]       = useState('pricing')
+  const [syncing, setSyncing] = useState(false)
+  const [syncMsg, setSyncMsg] = useState('')
 
   useEffect(() => {
     api.get('/fields').then(r => setFields(r.data)).catch(() => {})
+    // Auto-sync slot prices from pricing records khi mở trang
+    api.post('/field-pricings/sync-all-slots').catch(() => {})
   }, [])
 
+  const handleSync = async () => {
+    setSyncing(true); setSyncMsg('')
+    try {
+      const res = await api.post('/field-pricings/sync-all-slots')
+      setSyncMsg(`Đã đồng bộ giá cho ${res.data} sân`)
+      setTimeout(() => setSyncMsg(''), 3000)
+    } catch {
+      setSyncMsg('Lỗi đồng bộ')
+    } finally { setSyncing(false) }
+  }
+
   const TABS = [
-    { key: 'pricing', label: '💰 Bảng giá sân' },
-    { key: 'holiday', label: '🎉 Giá ngày lễ' },
-    { key: 'preview', label: '📅 Preview 14 ngày' },
+    { key: 'pricing', label: 'Bảng giá sân' },
+    { key: 'holiday', label: 'Giá ngày lễ' },
+    { key: 'preview', label: 'Preview 14 ngày' },
   ]
 
   return (
     <div className={styles.page}>
       <div className={styles.pageHeader}>
-        <h1>💰 Quản lý giá sân</h1>
-        <p className={styles.pageDesc}>Giá ngày thường → Cuối tuần tự tính × 1.25 → Ngày lễ theo %</p>
+        <div>
+          <h1>Quản lý giá sân</h1>
+          <p className={styles.pageDesc}>Giá ngày thường → Cuối tuần tự tính × 1.25 → Ngày lễ theo %</p>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          {syncMsg && <span style={{fontSize:13,color:'#166534',fontWeight:600}}>{syncMsg}</span>}
+          <button
+            className={styles.btnGreen}
+            style={{padding:'7px 16px',fontSize:13}}
+            onClick={handleSync}
+            disabled={syncing}
+          >
+            {syncing ? 'Đang đồng bộ...' : 'Đồng bộ giá → Đặt sân'}
+          </button>
+        </div>
       </div>
 
       <div className={styles.tabs}>

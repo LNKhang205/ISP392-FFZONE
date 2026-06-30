@@ -27,9 +27,12 @@ public class UserVoucherService {
         Voucher voucher = voucherRepository.findById(voucherId)
             .orElseThrow(() -> AppException.notFound("Voucher không tồn tại"));
 
+        if (voucher.getStatus() != com.ffzone.ffzone_backend.enums.VoucherStatus.ACTIVE)
+            throw AppException.badRequest("Voucher không hoạt động hoặc đã hết hạn");
+
         LocalDateTime now = LocalDateTime.now();
-        if (voucher.getStartDate().isAfter(now) || voucher.getEndDate().isBefore(now))
-            throw AppException.badRequest("Voucher chưa hoặc đã hết thời gian nhận");
+        if (voucher.getEndDate().isBefore(now))
+            throw AppException.badRequest("Voucher đã hết thời gian nhận");
 
         if (userVoucherRepository.existsByAccountIdAndVoucherId(account.getId(), voucherId))
             throw AppException.conflict("Bạn đã nhận voucher này rồi");

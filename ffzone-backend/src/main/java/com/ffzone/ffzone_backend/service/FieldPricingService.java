@@ -311,6 +311,21 @@ public class FieldPricingService {
     // ════════════════════════════════════════════════════════════
     // SYNC SLOT — core logic
     // ════════════════════════════════════════════════════════════
+
+    /**
+     * Đồng bộ lại giá TẤT CẢ slot AVAILABLE từ pricing hiện tại.
+     * Gọi khi cần re-sync toàn bộ (ví dụ: admin mở PricingManagement,
+     * hoặc slot đã generate trước khi pricing được thay đổi).
+     */
+    @Transactional
+    public int syncAllSlots() {
+        List<Field> allFields = fieldRepository.findAll();
+        List<UUID> fieldIds = allFields.stream().map(Field::getId).toList();
+        LocalDate from = LocalDate.now();
+        LocalDate to   = from.plusDays(SYNC_DAYS);
+        syncSlotPrices(fieldIds, from, to);
+        return fieldIds.size();
+    }
  
     /**
      * Tính lại giá từng slot dựa trên pricing hiện tại (ưu tiên HOLIDAY > WEEKEND > WEEKDAY).
@@ -401,6 +416,16 @@ public class FieldPricingService {
      * Dùng findByFieldIdAndIsActive để tránh lazy load p.getField().
      */
     private void expireByType(UUID fieldId, String dayOfWeek, LocalDate newFrom, LocalDate closingDate) {
+        // 1. Deactivate duplicate active records starting on the same day
+        List<FieldPricing> toDeactivate = pricingRepository.findByFieldIdAndIsActive(fieldId, true)
+                .stream()
+                .filter(p -> dayOfWeek.equals(p.getDayOfWeek())
+                          && p.getEffectiveFrom().equals(newFrom))
+                .toList();
+        toDeactivate.forEach(p -> p.setIsActive(false));
+        if (!toDeactivate.isEmpty()) pricingRepository.saveAll(toDeactivate);
+
+        // 2. Expire old active records that started before newFrom
         List<FieldPricing> toExpire = pricingRepository.findByFieldIdAndIsActive(fieldId, true)
                 .stream()
                 .filter(p -> dayOfWeek.equals(p.getDayOfWeek())

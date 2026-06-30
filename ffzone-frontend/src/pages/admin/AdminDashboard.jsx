@@ -10,17 +10,17 @@ import PricingManagement from './PricingManagement'
 /* ── Sidebar ── */
 function Sidebar({ onLogout }) {
   const items = [
-    { to: '/admin',           label: '📊 Tổng quan',        end: true },
-    { to: '/admin/accounts',  label: '👥 Tài khoản'         },
-    { to: '/admin/fields',    label: '🏟️ Sân bóng'          },
-    { to: '/admin/pricings',  label: '💰 Giá sân'           },
-    { to: '/admin/vouchers',  label: '🎁 Voucher'           },
-    { to: '/admin/services',  label: '🛒 Dịch vụ'           },
+    { to: '/admin',           label: 'Tổng quan',        end: true },
+    { to: '/admin/accounts',  label: 'Tài khoản'         },
+    { to: '/admin/fields',    label: 'Sân bóng'          },
+    { to: '/admin/pricings',  label: 'Giá sân'           },
+    { to: '/admin/vouchers',  label: 'Voucher'           },
+    { to: '/admin/services',  label: 'Dịch vụ'           },
   ]
   return (
     <aside className={styles.sidebar}>
       <div className={styles.sidebarLogo}>
-        <span>⚽</span> <strong>FF</strong>Zone
+        <strong>FF</strong>Zone
         <div className={styles.sidebarRole}>IT Admin</div>
       </div>
       <nav className={styles.sidebarNav}>
@@ -38,7 +38,7 @@ function Sidebar({ onLogout }) {
         ))}
       </nav>
       <div className={styles.sidebarFooter}>
-        <button onClick={onLogout} className={styles.logoutBtn}>🚪 Đăng xuất</button>
+        <button onClick={onLogout} className={styles.logoutBtn}>Đăng xuất</button>
       </div>
     </aside>
   )
@@ -64,8 +64,8 @@ function CrudTable({ columns, rows, onDelete, onEdit }) {
               {(onEdit || onDelete) && (
                 <td>
                   <div className={styles.actions}>
-                    {onEdit   && <button className={styles.btnEdit}   onClick={() => onEdit(row)}>✏️ Sửa</button>}
-                    {onDelete && <button className={styles.btnDelete} onClick={() => onDelete(row)}>🗑️ Xóa</button>}
+                    {onEdit   && <button className={styles.btnEdit}   onClick={() => onEdit(row)}>Sửa</button>}
+                    {onDelete && <button className={styles.btnDelete} onClick={() => onDelete(row)}>Xóa</button>}
                   </div>
                 </td>
               )}
@@ -118,7 +118,7 @@ function Overview() {
         ))}
       </div>
       <div className={styles.hint}>
-        <p>👈 Chọn mục trong sidebar để thực hiện quản lý CRUD.</p>
+        <p>Chọn mục trong sidebar để quản lý hệ thống.</p>
       </div>
     </div>
   )
@@ -293,7 +293,7 @@ function VoucherManagement() {
   const save = async () => {
     setMsg('')
     if (!form.code || !form.discountValue || !form.quantity || !form.startDate || !form.endDate) {
-      setMsg('❌ Vui lòng điền đầy đủ thông tin'); return
+      setMsg('Vui lòng điền đầy đủ thông tin'); return
     }
     try {
       await api.post('/vouchers', {
@@ -304,10 +304,10 @@ function VoucherManagement() {
         startDate:     form.startDate,
         endDate:       form.endDate,
       })
-      setMsg('✅ Tạo voucher thành công')
+      setMsg('Tạo voucher thành công')
       setForm({ code: '', voucherType: 'PERCENT', discountValue: '', quantity: '', startDate: '', endDate: '' })
       load()
-    } catch (e) { setMsg('❌ ' + (e.response?.data?.message || 'Lỗi tạo voucher')) }
+    } catch (e) { setMsg(e.response?.data?.message || 'Lỗi tạo voucher') }
   }
 
   const deactivate = async (v) => {
@@ -323,7 +323,12 @@ function VoucherManagement() {
     { key: 'remaining',     label: 'Còn lại',     render: r => `${r.remaining}/${r.quantity}` },
     { key: 'startDate',     label: 'Bắt đầu',     render: r => new Date(r.startDate).toLocaleDateString('vi-VN') },
     { key: 'endDate',       label: 'Kết thúc',    render: r => new Date(r.endDate).toLocaleDateString('vi-VN') },
-    { key: 'status',        label: 'Trạng thái',  render: r => r.status === 'ACTIVE' ? '🟢 Hoạt động' : '🔴 Đã tắt' },
+    { key: 'status',        label: 'Trạng thái',  render: r => {
+      const st = r.status === 'ACTIVE' ? { label: 'Hoạt động', bg: '#dcfce7', color: '#166534' }
+        : r.status === 'EXPIRED' ? { label: 'Hết hạn', bg: '#fef9c3', color: '#854d0e' }
+        : { label: 'Đã tắt', bg: '#fee2e2', color: '#991b1b' }
+      return <span style={{ background: st.bg, color: st.color, padding: '2px 10px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{st.label}</span>
+    }},
   ]
 
   return (
@@ -385,7 +390,7 @@ export default function AdminDashboard() {
           <span className={styles.welcome}>Xin chào, <strong>{user?.fullName}</strong></span>
           <span className={styles.roleBadgeTop}>IT Admin</span>
           <button onClick={() => navigate('/')} className="btn btn-outline btn-sm" style={{ marginLeft: 'auto' }}>
-            🏠 Về trang chủ
+            Về trang chủ
           </button>
         </div>
         <div className={styles.content}>

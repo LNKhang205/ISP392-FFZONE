@@ -24,10 +24,14 @@ public class VoucherResponse {
     private VoucherStatus status;
 
     public static VoucherResponse from(Voucher v) {
+        VoucherStatus status = v.getStatus();
+        if (status == VoucherStatus.ACTIVE && v.getEndDate().isBefore(LocalDateTime.now())) {
+            status = VoucherStatus.EXPIRED;
+        }
         return VoucherResponse.builder()
             .id(v.getId()).code(v.getCode()).voucherType(v.getVoucherType())
             .discountValue(v.getDiscountValue()).quantity(v.getQuantity())
             .usedQuantity(v.getUsedQuantity()).remaining(v.getQuantity() - v.getUsedQuantity())
-            .startDate(v.getStartDate()).endDate(v.getEndDate()).status(v.getStatus()).build();
+            .startDate(v.getStartDate()).endDate(v.getEndDate()).status(status).build();
     }
 }

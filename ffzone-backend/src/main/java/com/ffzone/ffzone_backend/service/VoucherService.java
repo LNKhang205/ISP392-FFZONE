@@ -20,12 +20,40 @@ public class VoucherService {
 
     private final VoucherRepository voucherRepository;
 
+    @Transactional
     public List<VoucherResponse> findAll() {
-        return voucherRepository.findAll().stream().map(VoucherResponse::from).toList();
+        LocalDateTime now = LocalDateTime.now();
+        List<Voucher> vouchers = voucherRepository.findAll();
+        boolean changed = false;
+        for (Voucher v : vouchers) {
+            if (v.getStatus() == VoucherStatus.ACTIVE && v.getEndDate().isBefore(now)) {
+                v.setStatus(VoucherStatus.EXPIRED);
+                voucherRepository.save(v);
+                changed = true;
+            }
+        }
+        if (changed) {
+            voucherRepository.flush();
+        }
+        return vouchers.stream().map(VoucherResponse::from).toList();
     }
 
+    @Transactional
     public List<VoucherResponse> findAvailable() {
-        return voucherRepository.findAvailable(LocalDateTime.now())
+        LocalDateTime now = LocalDateTime.now();
+        List<Voucher> active = voucherRepository.findByStatus(VoucherStatus.ACTIVE);
+        boolean changed = false;
+        for (Voucher v : active) {
+            if (v.getEndDate().isBefore(now)) {
+                v.setStatus(VoucherStatus.EXPIRED);
+                voucherRepository.save(v);
+                changed = true;
+            }
+        }
+        if (changed) {
+            voucherRepository.flush();
+        }
+        return voucherRepository.findAvailable(now)
             .stream().map(VoucherResponse::from).toList();
     }
 

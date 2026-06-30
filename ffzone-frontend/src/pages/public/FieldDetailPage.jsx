@@ -72,14 +72,29 @@ export default function FieldDetailPage() {
     ? images.map(img => getImageUrl(img.imageUrl))
     : [getImageUrl(field.thumbnailUrl)]
 
-  // Lấy giá theo ngày được chọn
-  const dayName = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'][new Date(selectedDate + 'T00:00:00').getDay()]
+  // Determine day type for pricing lookup
+  const selectedDayOfWeek = new Date(selectedDate + 'T00:00:00').getDay()
+  const isWeekendDay = selectedDayOfWeek === 0 || selectedDayOfWeek === 6
+  const dayType = isWeekendDay ? 'WEEKEND' : 'WEEKDAY'
+
   const activePricings = pricings.filter(p =>
     p.isActive &&
-    (!p.dayOfWeek || p.dayOfWeek === dayName || p.dayOfWeek === 'ALL') &&
+    (p.dayOfWeek === dayType || p.dayOfWeek === 'HOLIDAY' || p.dayOfWeek === 'ALL' || !p.dayOfWeek) &&
     (!p.effectiveFrom || p.effectiveFrom <= selectedDate) &&
     (!p.effectiveTo || p.effectiveTo >= selectedDate)
   )
+
+  // Fallback: nếu không có WEEKEND record, tính từ WEEKDAY × 1.25
+  if (activePricings.length === 0 && isWeekendDay) {
+    const wdPricings = pricings.filter(p =>
+      p.isActive && p.dayOfWeek === 'WEEKDAY' &&
+      (!p.effectiveFrom || p.effectiveFrom <= selectedDate) &&
+      (!p.effectiveTo || p.effectiveTo >= selectedDate)
+    )
+    wdPricings.forEach(p => {
+      activePricings.push({ ...p, price: Math.ceil(Number(p.price) * 1.25 / 1000) * 1000, dayOfWeek: 'WEEKEND' })
+    })
+  }
 
   return (
     <div className={styles.page}>
@@ -161,7 +176,7 @@ export default function FieldDetailPage() {
 
               {/* Bảng giá */}
               <div className={styles.priceSection}>
-                <h4>💰 Bảng giá ({dayName === 'SATURDAY' || dayName === 'SUNDAY' ? 'Cuối tuần' : 'Ngày thường'})</h4>
+                <h4>Bảng giá ({isWeekendDay ? 'Cuối tuần' : 'Ngày thường'})</h4>
                 {activePricings.length === 0 ? (
                   <p className={styles.noPrice}>Chưa có bảng giá cho ngày này. Vui lòng liên hệ để biết thêm.</p>
                 ) : (

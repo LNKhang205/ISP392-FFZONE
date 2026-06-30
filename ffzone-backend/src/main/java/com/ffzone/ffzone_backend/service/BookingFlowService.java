@@ -331,7 +331,10 @@ public class BookingFlowService {
 
     /** Job tự động hủy booking PENDING_PAYMENT quá hạn (gọi từ scheduler). */
     @Transactional
-    public void expirePendingBooking(Booking booking) {
+    public void expirePendingBooking(Booking detachedBooking) {
+        Booking booking = bookingRepository.findById(detachedBooking.getId())
+                .orElseThrow(() -> AppException.notFound("Booking không tồn tại: " + detachedBooking.getId()));
+
         List<BookingSlot> bookingSlots = bookingSlotRepository.findByBookingId(booking.getId());
         releaseSlots(bookingSlots);
 

@@ -50,7 +50,7 @@ function FieldManagement() {
       )
       setThumbnails(Object.fromEntries(entries))
     } catch (e) {
-      setPageMsg('❌ ' + getApiError(e, 'Không tải được danh sách sân'))
+      setPageMsg(getApiError(e, 'Không tải được danh sách sân'))
     } finally {
       setLoading(false)
     }
@@ -88,8 +88,8 @@ function FieldManagement() {
 
   const save = async () => {
     setFormMsg('')
-    if (!form.code.trim()) { setFormMsg('❌ Vui lòng nhập mã sân'); return }
-    if (!form.name.trim()) { setFormMsg('❌ Vui lòng nhập tên sân'); return }
+    if (!form.code.trim()) { setFormMsg('Vui lòng nhập mã sân'); return }
+    if (!form.name.trim()) { setFormMsg('Vui lòng nhập tên sân'); return }
 
     setSaving(true)
     try {
@@ -100,7 +100,7 @@ function FieldManagement() {
           description: form.description,
           status: form.status,
         })
-        setPageMsg('✅ Đã cập nhật sân')
+        setPageMsg('Đã cập nhật sân')
       } else {
         const code = form.code.trim().toUpperCase()
         await createField({
@@ -110,12 +110,12 @@ function FieldManagement() {
           description: form.description,
           status: form.status,
         })
-        setPageMsg('✅ Đã thêm sân: ' + code)
+        setPageMsg('Đã thêm sân: ' + code)
       }
       closeForm()
       await load()
     } catch (e) {
-      setFormMsg('❌ ' + getApiError(e, editing ? 'Không cập nhật được sân' : 'Không thêm được sân'))
+      setFormMsg(getApiError(e, editing ? 'Không cập nhật được sân' : 'Không thêm được sân'))
     } finally {
       setSaving(false)
     }
@@ -125,7 +125,7 @@ function FieldManagement() {
     if (!window.confirm(`Xóa sân "${field.name}"?\nToàn bộ ảnh của sân cũng sẽ bị xóa!`)) return
     try {
       await deleteField(field.id)
-      setPageMsg('✅ Đã xóa sân')
+      setPageMsg('Đã xóa sân')
       load()
     } catch (e) {
       alert('Không thể xóa: ' + getApiError(e, 'Không xóa được sân'))
@@ -137,18 +137,18 @@ function FieldManagement() {
   return (
     <div style={{ padding: '0 4px' }}>
       <div style={s.pageHeader}>
-        <h1 style={{ margin: 0 }}>🏟️ Quản lý sân bóng</h1>
-        <button onClick={openCreate} style={s.primaryBtn}>➕ Thêm sân</button>
+        <h1 style={{ margin: 0 }}>Quản lý sân bóng</h1>
+        <button onClick={openCreate} style={s.primaryBtn}>Thêm sân</button>
       </div>
 
       {pageMsg && (
-        <div style={{ ...s.notice, color: pageMsg.startsWith('✅') ? '#166534' : '#991b1b' }}>
+        <div style={{ ...s.notice, color: '#166534' }}>
           {pageMsg}
         </div>
       )}
 
       {loading
-        ? <p style={s.empty}>⏳ Đang tải...</p>
+        ? <p style={s.empty}>Đang tải...</p>
         : fields.length === 0
           ? <p style={s.empty}>Chưa có sân nào.</p>
           : (
@@ -182,9 +182,9 @@ function FieldManagement() {
                       </td>
                       <td style={{ ...s.td, whiteSpace: 'nowrap' }}>
                         <div style={s.actions}>
-                          <button onClick={() => setImageTarget(f)} style={s.btn('#1d4ed8', '#eff6ff', '#bfdbfe')}>🖼️ Ảnh</button>
-                          <button onClick={() => openEdit(f)} style={s.btn('#166534', '#f0fdf4', '#bbf7d0')}>✏️ Sửa</button>
-                          <button onClick={() => del(f)} style={s.btn('#991b1b', '#fef2f2', '#fecaca')}>🗑️ Xóa</button>
+                          <button onClick={() => setImageTarget(f)} style={s.btn('#1d4ed8', '#eff6ff', '#bfdbfe')}>Ảnh</button>
+                          <button onClick={() => openEdit(f)} style={s.btn('#166534', '#f0fdf4', '#bbf7d0')}>Sửa</button>
+                          <button onClick={() => del(f)} style={s.btn('#991b1b', '#fef2f2', '#fecaca')}>Xóa</button>
                         </div>
                       </td>
                     </tr>

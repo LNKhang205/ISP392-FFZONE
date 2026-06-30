@@ -130,4 +130,13 @@ public class FieldPricingController {
     public ResponseEntity<Integer> updateHolidayDates(@RequestBody FieldPricingRequest req) {
         return ResponseEntity.ok(pricingService.updateHolidayDates(req));
     }
+    /**
+     * Đồng bộ giá tất cả slot AVAILABLE theo pricing hiện tại.
+     * Dùng khi giá trên trang đặt sân bị lệch so với PricingManagement.
+     */
+    @PostMapping("/sync-all-slots")
+    @PreAuthorize("hasRole('IT_ADMIN')")
+    public ResponseEntity<Integer> syncAllSlots() {
+        return ResponseEntity.ok(pricingService.syncAllSlots());
+    }
 }

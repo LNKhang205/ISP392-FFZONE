@@ -17,10 +17,10 @@ public class SlotScheduler {
 
     private final SlotGeneratorService slotGeneratorService;  // thay FieldSlotService
 
-    /** Mỗi ngày 00:05 GMT+7 — generate ngày mới nhất (today+6). */
+    /** Mỗi ngày 00:05 GMT+7 — generate ngày mới nhất (today+13). */
     @Scheduled(cron = "0 5 0 * * *", zone = "Asia/Ho_Chi_Minh")
     public void generateDailySlots() {
-        LocalDate targetDate = LocalDate.now().plusDays(6);
+        LocalDate targetDate = LocalDate.now().plusDays(13);
         log.info("=== [SlotScheduler] Cron daily: generate slots ngày {} ===", targetDate);
         try {
             slotGeneratorService.generateForAllFields(targetDate);
@@ -35,9 +35,9 @@ public class SlotScheduler {
      */
     @Scheduled(initialDelay = 3000, fixedDelay = Long.MAX_VALUE)
     public void generateOnStartup() {
-        log.info("=== [SlotScheduler] Startup: generate slots 7 ngày tới ===");
+        log.info("=== [SlotScheduler] Startup: generate slots 14 ngày tới ===");
         LocalDate today = LocalDate.now();
-        for (int i = 0; i < 7; i++) {
+        for (int i = 0; i < 14; i++) {
             LocalDate date = today.plusDays(i);
             try {
                 slotGeneratorService.generateForAllFields(date);
