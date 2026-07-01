@@ -41,6 +41,9 @@ public class SecurityConfig {
                 // ── OAuth2 endpoints ──────────────────────────────────────
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
 
+                // ── Auth me & logout yêu cầu token ─────────────────────────
+                .requestMatchers("/api/auth/me", "/api/auth/logout").authenticated()
+
                 // ── Public (không cần login) ──────────────────────────────
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/fields/**").permitAll()
