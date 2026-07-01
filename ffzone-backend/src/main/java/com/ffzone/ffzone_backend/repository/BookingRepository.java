@@ -18,4 +18,15 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
 
     @Query("SELECT b FROM Booking b WHERE b.status = 'PENDING_PAYMENT' AND b.paymentDeadline < :now")
     List<Booking> findExpiredPendingBookings(@Param("now") LocalDateTime now);
+
+    /** Lấy tất cả booking có ít nhất 1 slot trong ngày :date — dùng cho Staff dashboard */
+    @Query("""
+        SELECT DISTINCT b FROM Booking b
+        JOIN b.bookingSlots bs
+        JOIN bs.fieldSlot fs
+        WHERE fs.slotDate = :date
+          AND b.status IN ('CONFIRMED','IN_PROGRESS','COMPLETED','CANCELLED')
+        ORDER BY b.createdAt ASC
+        """)
+    List<Booking> findBySlotDate(@Param("date") java.time.LocalDate date);
 }
