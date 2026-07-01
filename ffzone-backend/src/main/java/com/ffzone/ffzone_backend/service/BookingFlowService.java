@@ -50,6 +50,7 @@ public class BookingFlowService {
     private final UserVoucherRepository    userVoucherRepository;
     private final ServiceRepository        serviceRepository;
     private final RefundRepository         refundRepository;
+    private final EmailService             emailService;
 
     private static final int    MAX_CONSECUTIVE_SLOTS = 3;   // BR-25
     private static final int    PAYMENT_LOCK_MINUTES   = 10; // BR-27: tổng 10 phút (đặt + thanh toán), không tách 5+5
@@ -295,6 +296,14 @@ public class BookingFlowService {
                 .toList();
     }
 
+    /** Staff: lấy tất cả booking có slot trong ngày chỉ định (mặc định hôm nay) */
+    @Transactional(readOnly = true)
+    public List<BookingResponse> findByDate(java.time.LocalDate date) {
+        return bookingRepository.findBySlotDate(date).stream()
+                .map(b -> BookingResponse.from(b, bookingSlotRepository.findByBookingId(b.getId())))
+                .toList();
+    }
+
     public Booking getOrThrow(UUID id) {
         return bookingRepository.findById(id)
                 .orElseThrow(() -> AppException.notFound("Booking không tồn tại: " + id));
@@ -311,9 +320,25 @@ public class BookingFlowService {
             throw AppException.badRequest("Chỉ có thể hủy booking đang chờ thanh toán hoặc đã xác nhận");
 
         List<BookingSlot> bookingSlots = bookingSlotRepository.findByBookingId(bookingId);
-        releaseSlots(bookingSlots);
 
+        // BR-48/49: validate thời gian hủy trước khi làm bất cứ điều gì
         boolean wasPendingPayment = booking.getStatus() == BookingStatus.PENDING_PAYMENT;
+        if (!wasPendingPayment && !bookingSlots.isEmpty()) {
+            LocalDateTime earliest = bookingSlots.stream()
+                .map(bs -> java.time.LocalDateTime.of(bs.getFieldSlot().getSlotDate(), bs.getFieldSlot().getStartTime()))
+                .min(LocalDateTime::compareTo).orElse(LocalDateTime.now());
+            long hoursLeft = java.time.Duration.between(LocalDateTime.now(), earliest).toHours();
+            long minutesLeft = java.time.Duration.between(LocalDateTime.now(), earliest).toMinutes() % 60;
+            if (hoursLeft < CANCEL_FULL_REFUND_HOURS) {
+                throw AppException.badRequest(
+                    "Không thể hủy đơn và được hoàn tiền vì chỉ còn " + hoursLeft + " giờ " + minutesLeft +
+                    " phút trước giờ đá (chính sách yêu cầu hủy trước ít nhất " + CANCEL_FULL_REFUND_HOURS +
+                    " giờ). Nếu vẫn hủy, bạn sẽ mất 100% tiền đặt cọc."
+                );
+            }
+        }
+
+        releaseSlots(bookingSlots);
         booking.setStatus(BookingStatus.CANCELLED);
         booking.setNote(appendNote(booking.getNote(), "Hủy: " + (reason == null ? "không rõ lý do" : reason)));
         bookingRepository.save(booking);
@@ -321,12 +346,98 @@ public class BookingFlowService {
         rollbackVoucherUsage(booking);
 
         // Chỉ tạo refund task nếu đã thanh toán (CONFIRMED). PENDING_PAYMENT chưa trả tiền -> không cần refund.
+        int refundPercent = 0;
+        BigDecimal refundAmount = BigDecimal.ZERO;
         if (!wasPendingPayment) {
-            createRefundTask(booking, bookingSlots);
+            var refund = createRefundTask(booking, bookingSlots);
+            refundPercent = refund.getRefundPercent();
+            refundAmount  = refund.getRefundAmount();
         }
+
+        // Gửi email thông báo hủy booking
+        emailService.sendBookingCancelled(
+            account.getEmail(), account.getFullName(),
+            booking.getBookingCode(), booking.getField().getName(),
+            refundAmount, refundPercent
+        );
 
         log.info("[Booking] Hủy booking {} bởi {}", booking.getBookingCode(), account.getEmail());
         return BookingResponse.from(booking, List.of());
+    }
+
+    // ── Check-in (UC18) ──────────────────────────────────────────────────────
+
+    /**
+     * Staff xác nhận khách đã đến sân — đổi CONFIRMED → IN_PROGRESS.
+     * BR-52: chỉ check-in khi booking đang CONFIRMED.
+     * BR-53: không check-in sớm hơn 30 phút so với giờ bắt đầu slot sớm nhất.
+     */
+    @Transactional
+    public BookingResponse checkin(Account staff, UUID bookingId) {
+        Booking booking = getOrThrow(bookingId);
+
+        if (booking.getStatus() != BookingStatus.CONFIRMED)
+            throw AppException.badRequest("Chỉ có thể check-in booking đang ở trạng thái CONFIRMED (hiện tại: " + booking.getStatus() + ")");
+
+        List<BookingSlot> bookingSlots = bookingSlotRepository.findByBookingId(bookingId);
+
+        // BR-53: không check-in sớm hơn 30 phút
+        bookingSlots.stream()
+                .map(bs -> java.time.LocalDateTime.of(bs.getFieldSlot().getSlotDate(), bs.getFieldSlot().getStartTime()))
+                .min(java.time.LocalDateTime::compareTo)
+                .ifPresent(earliest -> {
+                    long minutesUntil = java.time.Duration.between(LocalDateTime.now(), earliest).toMinutes();
+                    if (minutesUntil > 30)
+                        throw AppException.badRequest(
+                            "Không thể check-in sớm hơn 30 phút trước giờ đá (còn " + minutesUntil + " phút nữa)");
+                });
+
+        booking.setStatus(BookingStatus.IN_PROGRESS);
+        booking.setCheckinAt(LocalDateTime.now());
+        bookingRepository.save(booking);
+
+        log.info("[CheckIn] Staff {} check-in booking {} lúc {}", staff.getEmail(), booking.getBookingCode(), booking.getCheckinAt());
+        return BookingResponse.from(booking, bookingSlots);
+    }
+
+    // ── Check-out (UC19) ─────────────────────────────────────────────────────
+
+    /**
+     * Staff xác nhận khách đã rời sân — đổi IN_PROGRESS → COMPLETED.
+     * BR-56: staff bấm "Confirm Match Completion" sau khi mọi dịch vụ đã được thanh toán.
+     * BR-81: tối thiểu 30 phút sau giờ check-in mới được checkout.
+     */
+    @Transactional
+    public BookingResponse checkout(Account staff, UUID bookingId) {
+        Booking booking = getOrThrow(bookingId);
+
+        if (booking.getStatus() != BookingStatus.IN_PROGRESS)
+            throw AppException.badRequest("Chỉ có thể check-out booking đang ở trạng thái IN_PROGRESS (hiện tại: " + booking.getStatus() + ")");
+
+        // BR-81: tối thiểu 30 phút sau check-in
+        if (booking.getCheckinAt() != null) {
+            long minutesSinceCheckin = java.time.Duration.between(booking.getCheckinAt(), LocalDateTime.now()).toMinutes();
+            if (minutesSinceCheckin < 30)
+                throw AppException.badRequest(
+                    "Phải chờ ít nhất 30 phút sau check-in mới có thể check-out (mới qua " + minutesSinceCheckin + " phút)");
+        }
+
+        booking.setStatus(BookingStatus.COMPLETED);
+        booking.setCheckoutAt(LocalDateTime.now());
+        bookingRepository.save(booking);
+
+        List<BookingSlot> bookingSlots = bookingSlotRepository.findByBookingId(bookingId);
+
+        // Gửi email mời survey (bất đồng bộ)
+        emailService.sendSurveyInvitation(
+            booking.getAccount().getEmail(),
+            booking.getAccount().getFullName(),
+            booking.getBookingCode(),
+            booking.getField().getName()
+        );
+
+        log.info("[CheckOut] Staff {} checkout booking {} lúc {}", staff.getEmail(), booking.getBookingCode(), booking.getCheckoutAt());
+        return BookingResponse.from(booking, bookingSlots);
     }
 
     /** Job tự động hủy booking PENDING_PAYMENT quá hạn (gọi từ scheduler). */
@@ -407,18 +518,28 @@ public class BookingFlowService {
 
     // ── Internal: slot release ──────────────────────────────────────────────
 
+    /**
+     * Giải phóng slot về AVAILABLE và XÓA record BookingSlot cũ.
+     * QUAN TRỌNG: booking_slots.field_slot_id có UNIQUE constraint (BR-26).
+     * Nếu chỉ đổi FieldSlot.status mà không xóa BookingSlot, lần đặt sau cho
+     * cùng slot sẽ insert trùng field_slot_id → vi phạm constraint dù slot
+     * đã AVAILABLE trở lại. Booking cha (CANCELLED) vẫn giữ nguyên — đây chỉ
+     * xóa bảng nối, không xóa lịch sử booking.
+     */
     private void releaseSlots(List<BookingSlot> bookingSlots) {
         for (BookingSlot bs : bookingSlots) {
             FieldSlot slot = bs.getFieldSlot();
             slot.setStatus(SlotStatus.AVAILABLE);
             fieldSlotRepository.save(slot);
         }
+        bookingSlotRepository.deleteAll(bookingSlots);
     }
 
     // ── Internal: refund (BR-48 / BR-49) ────────────────────────────────────
 
-    private void createRefundTask(Booking booking, List<BookingSlot> bookingSlots) {
-        if (bookingSlots.isEmpty()) return;
+    private Refund createRefundTask(Booking booking, List<BookingSlot> bookingSlots) {
+        if (bookingSlots.isEmpty()) return Refund.builder()
+                .refundPercent(0).refundAmount(BigDecimal.ZERO).build();
 
         java.time.LocalDateTime earliestSlotStart = bookingSlots.stream()
                 .map(bs -> java.time.LocalDateTime.of(bs.getFieldSlot().getSlotDate(), bs.getFieldSlot().getStartTime()))
@@ -443,6 +564,7 @@ public class BookingFlowService {
 
         log.info("[Booking] Tạo refund task cho {} - {}% - {}đ",
                 booking.getBookingCode(), refundPercent, refundAmount);
+        return refund;
     }
 
     // ── Internal: helpers ────────────────────────────────────────────────────

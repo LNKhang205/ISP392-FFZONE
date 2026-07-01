@@ -335,93 +335,217 @@ function ServiceManagement() {
   )
 }
 
-/* ── Trang: Check-in ── */
-// LƯU Ý: endpoint check-in/check-out (POST /api/bookings/{id}/checkin) CHƯA
-// được code ở backend — đây là phần UC18/UC19 còn thiếu (xem phần "Còn lại"
-// trong các trao đổi trước). Khi backend có endpoint thật, bỏ disabled bên dưới.
+/* ── Trang: Check-in / Check-out ── */
+const BOOKING_STATUS_LABEL = {
+  PENDING_PAYMENT: { text: 'Chờ thanh toán', bg: '#fef9c3', color: '#854d0e' },
+  CONFIRMED:       { text: 'Đã xác nhận',    bg: '#dbeafe', color: '#1d4ed8' },
+  IN_PROGRESS:     { text: 'Đang diễn ra',   bg: '#ede9fe', color: '#6d28d9' },
+  COMPLETED:       { text: 'Hoàn thành',     bg: '#dcfce7', color: '#166534' },
+  CANCELLED:       { text: 'Đã hủy',         bg: '#fee2e2', color: '#991b1b' },
+  REFUNDED:        { text: 'Đã hoàn tiền',   bg: '#f0fdf4', color: '#15803d' },
+}
+
 function CheckIn() {
-  const [bookingCode, setBookingCode] = useState('')
-  const [result, setResult] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [query, setQuery]           = useState('')
+  const [todayBookings, setTodayBookings] = useState([])
+  const [loadingToday, setLoadingToday]   = useState(true)
+  const [selectedBooking, setSelectedBooking] = useState(null)
+  const [searching, setSearching]   = useState(false)
+  const [busy, setBusy]             = useState(false)
+  const [searchErr, setSearchErr]   = useState('')
+  const [actionMsg, setActionMsg]   = useState(null)
+
+  // Load lịch hôm nay khi vào trang — vấn đề 3
+  useEffect(() => {
+    setLoadingToday(true)
+    api.get('/bookings/by-date')
+      .then(r => setTodayBookings(r.data))
+      .catch(() => setTodayBookings([]))
+      .finally(() => setLoadingToday(false))
+  }, [])
 
   const handleSearch = async () => {
-    if (!bookingCode.trim()) return
-    setLoading(true); setResult(null)
+    const q = query.trim().toUpperCase()
+    if (!q) return
+    setSearching(true); setSelectedBooking(null); setSearchErr(''); setActionMsg(null)
     try {
-      const r = await api.get(`/bookings/code/${bookingCode.trim().toUpperCase()}`)
-      setResult({ ok: true, data: r.data })
+      const r = await api.get(`/bookings/code/${q}`)
+      setSelectedBooking(r.data)
     } catch (e) {
-      setResult({ ok: false, msg: e.response?.data?.message || 'Không tìm thấy booking' })
-    } finally { setLoading(false) }
+      setSearchErr(e.response?.data?.message || 'Không tìm thấy booking với mã này.')
+    } finally { setSearching(false) }
   }
 
-  const handleCheckin = async () => {
-    if (!result?.data?.id) return
+  const handleCheckin = async (booking) => {
+    if (!window.confirm(`Xác nhận CHECK-IN cho booking ${booking.bookingCode}?`)) return
+    setBusy(true); setActionMsg(null)
     try {
-      await api.post(`/bookings/${result.data.id}/checkin`)
-      setResult(r => ({ ...r, data: { ...r.data, status: 'IN_PROGRESS' } }))
-      alert('✅ Check-in thành công!')
+      const r = await api.post(`/bookings/${booking.id}/checkin`)
+      // Cập nhật cả card trong danh sách lẫn card chi tiết
+      setTodayBookings(prev => prev.map(b => b.id === r.data.id ? r.data : b))
+      setSelectedBooking(r.data)
+      setActionMsg({ ok: true, text: `✅ Check-in thành công lúc ${fmtTime(r.data.checkinAt)}` })
     } catch (e) {
-      alert('❌ ' + (e.response?.data?.message || 'Chức năng check-in chưa khả dụng'))
-    }
+      setActionMsg({ ok: false, text: '❌ ' + (e.response?.data?.message || 'Không thể check-in') })
+    } finally { setBusy(false) }
+  }
+
+  const handleCheckout = async (booking) => {
+    if (!window.confirm(`Xác nhận CHECK-OUT cho booking ${booking.bookingCode}?`)) return
+    setBusy(true); setActionMsg(null)
+    try {
+      const r = await api.post(`/bookings/${booking.id}/checkout`)
+      setTodayBookings(prev => prev.map(b => b.id === r.data.id ? r.data : b))
+      setSelectedBooking(r.data)
+      setActionMsg({ ok: true, text: `✅ Check-out thành công lúc ${fmtTime(r.data.checkoutAt)}` })
+    } catch (e) {
+      setActionMsg({ ok: false, text: '❌ ' + (e.response?.data?.message || 'Không thể check-out') })
+    } finally { setBusy(false) }
+  }
+
+  const fmtTime = (dt) => {
+    if (!dt) return ''
+    return new Date(dt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+  }
+
+  const fmtSlot = (s) =>
+    `${String(s.startTime).substring(0,5)} – ${String(s.endTime).substring(0,5)}`
+
+  // ── Booking detail panel ──
+  const BookingPanel = ({ booking }) => {
+    if (!booking) return null
+    const cfg = BOOKING_STATUS_LABEL[booking.status] || { text: booking.status, bg: '#f3f4f6', color: '#374151' }
+    return (
+      <div className={styles.card} style={{ borderTop: `3px solid ${cfg.color}` }}>
+        <div className={styles.checkinHeader}>
+          <div>
+            <span className={styles.checkinCode}>{booking.bookingCode}</span>
+            <span className={styles.checkinField}>⚽ {booking.fieldName} ({booking.fieldCode})</span>
+          </div>
+          <span className={styles.statusBadge} style={{ background: cfg.bg, color: cfg.color }}>
+            {cfg.text}
+          </span>
+        </div>
+
+        <div className={styles.infoGrid}>
+          <div className={styles.infoRow}><span>Khách hàng</span><strong>{booking.accountName}</strong></div>
+          <div className={styles.infoRow}>
+            <span>Khung giờ</span>
+            <div className={styles.slotList}>
+              {booking.slots?.map(s => (
+                <span key={s.fieldSlotId} className={styles.slotTag}>
+                  📅 {s.slotDate} · {fmtSlot(s)}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className={styles.infoRow}>
+            <span>Tổng tiền</span>
+            <strong>{Number(booking.totalAmount).toLocaleString('vi-VN')}₫</strong>
+          </div>
+          {booking.checkinAt && (
+            <div className={styles.infoRow}>
+              <span>Check-in lúc</span>
+              <span className={styles.tsGreen}>🟢 {fmtTime(booking.checkinAt)}</span>
+            </div>
+          )}
+          {booking.checkoutAt && (
+            <div className={styles.infoRow}>
+              <span>Check-out lúc</span>
+              <span className={styles.tsBlue}>🔵 {fmtTime(booking.checkoutAt)}</span>
+            </div>
+          )}
+        </div>
+
+        {actionMsg && (
+          <p className={actionMsg.ok ? styles.successText : styles.errText}>{actionMsg.text}</p>
+        )}
+
+        <div className={styles.checkinActions}>
+          {booking.status === 'CONFIRMED' && (
+            <button className={styles.btnCheckin} onClick={() => handleCheckin(booking)} disabled={busy}>
+              {busy ? 'Đang xử lý...' : '✅ Xác nhận Check-in'}
+            </button>
+          )}
+          {booking.status === 'IN_PROGRESS' && (
+            <button className={styles.btnCheckout} onClick={() => handleCheckout(booking)} disabled={busy}>
+              {busy ? 'Đang xử lý...' : '🏁 Xác nhận Check-out'}
+            </button>
+          )}
+          {booking.status === 'COMPLETED' && <p className={styles.doneText}>🎉 Booking đã hoàn thành.</p>}
+          {booking.status === 'CANCELLED' && <p className={styles.errText}>Booking này đã bị hủy.</p>}
+          {booking.status === 'PENDING_PAYMENT' && <p className={styles.errText}>Chưa thanh toán, chưa thể check-in.</p>}
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className={styles.page}>
-      <h1>Check-in khách hàng</h1>
+      <h1>Check-in / Check-out</h1>
+
+      {/* ── Tìm theo mã ── */}
       <div className={styles.card}>
-        <p style={{ color: '#6b7280', marginBottom: 12 }}>Nhập mã đặt sân (VD: FFZ-20260620-1234) để tìm kiếm và check-in:</p>
+        <p className={styles.cardHint}>Tìm nhanh theo mã đặt sân hoặc scan QR:</p>
         <div className={styles.formRow}>
           <input
-            placeholder="Nhập mã đặt sân"
-            value={bookingCode}
-            onChange={e => setBookingCode(e.target.value)}
+            placeholder="Mã đặt sân (VD: FFZ-20260701-1234)..."
+            value={query}
+            onChange={e => setQuery(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSearch()}
             className={styles.input}
           />
-          <button onClick={handleSearch} disabled={loading} className={styles.btnPrimary}>
-            {loading ? '...' : '🔍 Tìm'}
+          <button onClick={handleSearch} disabled={searching} className={styles.btnPrimary}>
+            {searching ? '...' : '🔍 Tìm'}
           </button>
         </div>
+        {searchErr && <p className={styles.errText}>❌ {searchErr}</p>}
+      </div>
 
-        {result && (
-          <div className={styles.checkinResult}>
-            {result.ok ? (
-              <>
-                <div className={styles.infoRow}><span>Mã đặt sân:</span> <strong>{result.data.bookingCode}</strong></div>
-                <div className={styles.infoRow}><span>Khách hàng:</span> <strong>{result.data.accountName}</strong></div>
-                <div className={styles.infoRow}><span>Sân:</span> <strong>{result.data.fieldName}</strong></div>
-                <div className={styles.infoRow}>
-                  <span>Khung giờ:</span>
-                  <strong>
-                    {result.data.slots?.map(s => `${s.slotDate} ${String(s.startTime).substring(0,5)}`).join(', ') || '—'}
-                  </strong>
-                </div>
-                <div className={styles.infoRow}><span>Trạng thái:</span>
-                  <span className={styles.statusBadge} style={{ background:'#dcfce7', color:'#166534' }}>
-                    {result.data.status}
+      {/* Chi tiết booking tìm được qua mã */}
+      {selectedBooking && <BookingPanel booking={selectedBooking} />}
+
+      {/* ── Lịch sân hôm nay — vấn đề 2 & 3 ── */}
+      <div className={styles.card}>
+        <h2 className={styles.sectionTitle}>
+          📅 Lịch sân hôm nay — {new Date().toLocaleDateString('vi-VN')}
+        </h2>
+        {loadingToday ? (
+          <p className={styles.cardHint}>Đang tải...</p>
+        ) : todayBookings.length === 0 ? (
+          <p className={styles.cardHint}>Không có đơn nào hôm nay.</p>
+        ) : (
+          <div className={styles.todayList}>
+            {todayBookings.map(b => {
+              const cfg = BOOKING_STATUS_LABEL[b.status] || { text: b.status, bg: '#f3f4f6', color: '#374151' }
+              return (
+                <div
+                  key={b.id}
+                  className={`${styles.todayRow} ${selectedBooking?.id === b.id ? styles.todayRowActive : ''}`}
+                  onClick={() => { setSelectedBooking(b); setActionMsg(null); setSearchErr('') }}
+                >
+                  <div className={styles.todayRowLeft}>
+                    <span className={styles.todayCode}>{b.bookingCode}</span>
+                    <span className={styles.todayMeta}>
+                      ⚽ {b.fieldName} &nbsp;·&nbsp;
+                      👤 {b.accountName} &nbsp;·&nbsp;
+                      🕐 {b.slots?.map(fmtSlot).join(', ')}
+                    </span>
+                  </div>
+                  <span className={styles.statusBadge} style={{ background: cfg.bg, color: cfg.color }}>
+                    {cfg.text}
                   </span>
                 </div>
-                {result.data.status === 'CONFIRMED' && (
-                  <>
-                    <button onClick={handleCheckin} className={styles.btnPrimary} style={{ marginTop: 16 }} disabled>
-                      ✅ Xác nhận Check-in
-                    </button>
-                    <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 6 }}>
-                      Chức năng check-in đang được hoàn thiện ở backend.
-                    </p>
-                  </>
-                )}
-              </>
-            ) : (
-              <p style={{ color: '#dc2626' }}>❌ {result.msg}</p>
-            )}
+              )
+            })}
           </div>
         )}
       </div>
     </div>
   )
 }
+
+
 
 /* ── Trang: Hoàn tiền ── */
 function RefundManagement() {
