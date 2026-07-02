@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import api from '../../services/api'
 import { getAvailableVouchers, claimVoucher, getMyVouchers } from '../../api/voucherApi'
 import styles from './HomePage.module.css'
+import { getLocalDateString } from '../../utils/date'
 
 const FIELD_TYPE_LABEL = { '5V5': 'Sân 5 người', '7V7': 'Sân 7 người', '9V9': 'Sân 9 người' }
 const FIELD_IMG_FALLBACK = 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=600&q=80'
@@ -179,7 +180,7 @@ export default function HomePage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = getLocalDateString()
 
   return (
     <div>

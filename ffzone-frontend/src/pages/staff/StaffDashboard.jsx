@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import api from '../../services/api'
 import { getPendingRefunds, getAllRefunds, completeRefund, rejectRefund } from '../../api/refundApi'
 import styles from './StaffDashboard.module.css'
+import { getLocalDateString } from '../../utils/date'
 
 /* ── Sidebar ── */
 function Sidebar({ onLogout }) {
@@ -46,7 +47,7 @@ function TodaySchedule() {
   const [slots, setSlots] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split('T')[0]
+    getLocalDateString()
   )
 
   useEffect(() => {

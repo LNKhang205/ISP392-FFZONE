@@ -21,8 +21,8 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
 
     /** Lấy tất cả booking có ít nhất 1 slot trong ngày :date — dùng cho Staff dashboard */
     @Query("""
-        SELECT DISTINCT b FROM Booking b
-        JOIN b.bookingSlots bs
+        SELECT DISTINCT b FROM BookingSlot bs
+        JOIN bs.booking b
         JOIN bs.fieldSlot fs
         WHERE fs.slotDate = :date
           AND b.status IN ('CONFIRMED','IN_PROGRESS','COMPLETED','CANCELLED')

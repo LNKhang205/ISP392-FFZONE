@@ -3,6 +3,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import { useCustomerOnly } from '../../hooks/useCustomerOnly'
 import styles from './FieldDetailPage.module.css'
+import { getLocalDateString } from '../../utils/date'
 
 const FALLBACK = 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=600&q=80'
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8080'
@@ -20,7 +21,7 @@ export default function FieldDetailPage() {
   const navigate = useNavigate()
   const guard = useCustomerOnly()
 
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = getLocalDateString()
   const [selectedDate, setSelectedDate] = useState(searchParams.get('date') || todayStr)
 
   const [field, setField] = useState(null)

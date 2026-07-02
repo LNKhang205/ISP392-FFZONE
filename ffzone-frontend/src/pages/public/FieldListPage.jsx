@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '../../services/api'
 import styles from './FieldListPage.module.css'
+import { getLocalDateString } from '../../utils/date'
 
 const TYPE_LABEL = { '5V5':'Sân 5 người','7V7':'Sân 7 người','9V9':'Sân 9 người' }
 const FALLBACK = 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=600&q=80'
@@ -18,7 +19,7 @@ export default function FieldListPage() {
   const [loading, setLoading] = useState(true)
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const date = searchParams.get('date') || new Date().toISOString().split('T')[0]
+  const date = searchParams.get('date') || getLocalDateString()
 
   useEffect(() => {
     api.get('/fields/active').then(r => setFields(r.data)).finally(() => setLoading(false))

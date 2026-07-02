@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import { useCustomerOnly } from '../../hooks/useCustomerOnly'
 import styles from './BookingPage.module.css'
+import { getLocalDateString } from '../../utils/date'
 
 // ─── Constants ────────────────────────────────────────────────
 const TYPE_CONFIG = {
@@ -20,7 +21,7 @@ function buildNext7Days() {
   const days = []
   for (let i = 0; i < 7; i++) {
     const d = new Date(); d.setDate(d.getDate() + i)
-    const iso = d.toISOString().split('T')[0]
+    const iso = getLocalDateString(d)
     const label = i === 0 ? 'Hôm nay' : i === 1 ? 'Ngày mai'
       : d.toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit' })
     const dayName = d.toLocaleDateString('vi-VN', { weekday: 'long' })
@@ -52,7 +53,7 @@ function minutesBetween(a, b) {
 // chọn được lúc 23:00 vì 22:30+60=23:30 > 23:00 — sai vì slot đã bắt đầu rồi)
 function isSlotPast(slotStartTime, selDate) {
   const now = new Date()
-  const todayIso = now.toISOString().split('T')[0]
+  const todayIso = getLocalDateString(now)
   if (selDate > todayIso) return false
   if (selDate < todayIso) return true
   const [h, m] = slotStartTime.split(':').map(Number)
@@ -218,7 +219,7 @@ export default function BookingPage() {
 
   // Banner thông báo ngày lễ — chỉ những ngày lễ sắp tới / đang áp dụng
   const upcomingHolidays = holidays.filter(h => {
-    const today = new Date().toISOString().split('T')[0]
+    const today = getLocalDateString()
     return !h.effectiveTo || h.effectiveTo >= today
   })
 

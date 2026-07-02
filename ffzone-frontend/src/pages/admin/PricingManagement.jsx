@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../../services/api'
 import styles from './PricingManagement.module.css'
+import { getLocalDateString } from '../../utils/date'
 
 // ── Hằng số ─────────────────────────────────────────────────────
 // DEFAULT_PRICES removed — giá lấy từ DB thực tế
@@ -18,7 +19,7 @@ function calcWeekend(wd) {
   return Math.ceil((Number(wd) * 1.25) / 1000) * 1000
 }
 function todayStr() {
-  return new Date().toISOString().split('T')[0]
+  return getLocalDateString()
 }
 function statusOf(from, to) {
   const now = todayStr()
@@ -762,9 +763,8 @@ function buildNext14Days() {
   const days = []
   for (let i = 0; i < 14; i++) {
     const d = new Date()
-    d.setHours(0,0,0,0)
     d.setDate(d.getDate() + i)
-    const iso = d.toISOString().split('T')[0]
+    const iso = getLocalDateString(d)
     const dow = d.getDay() // 0=CN, 6=T7
     const isWE = dow === 0 || dow === 6
     const dayNames = ['CN','T2','T3','T4','T5','T6','T7']
