@@ -190,12 +190,12 @@ export default function HomePage() {
       <section className={styles.hero}>
         <div className={`container ${styles.heroInner}`}>
           <div className={styles.heroText}>
-            <span className={`badge badge-green ${styles.heroBadge}`}>⚡ Đặt sân nhanh chóng</span>
+            <span className={`badge badge-green ${styles.heroBadge}`}>Đặt sân nhanh chóng</span>
             <h1>Sân bóng đá <br /><span>chất lượng cao</span></h1>
             <p>Đặt sân trực tuyến 24/7 – Thanh toán VNPay an toàn – Xác nhận tức thì</p>
             <div className={styles.heroSearch}>
               <div className={styles.searchBox}>
-                <span>📅</span>
+
                 <input
                   type="date"
                   min={today}
@@ -218,20 +218,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* STATS */}
-      <section className={styles.stats}>
-        <div className="container">
-          <div className={styles.statsGrid}>
-            {[['⚽','3+','Sân bóng'],['📅','24/7','Đặt lịch'],['⚡','5 phút','Xác nhận'],['🏆','100%','Uy tín']].map(([icon,num,label]) => (
-              <div key={label} className={styles.statItem}>
-                <span className={styles.statIcon}>{icon}</span>
-                <strong>{num}</strong>
-                <span>{label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+
 
       {/* FIELDS */}
       <section className={styles.section}>
@@ -260,7 +247,7 @@ export default function HomePage() {
                     <h3>{field.name}</h3>
                     <p>{field.description || 'Sân cỏ nhân tạo chất lượng cao'}</p>
                     <div className={styles.fieldFooter}>
-                      <span className={styles.fieldStatus}>🟢 Đang hoạt động</span>
+                      <span className={styles.fieldStatus}>Đang hoạt động</span>
                       <button
                         className="btn btn-primary btn-sm"
                         onClick={e => { e.stopPropagation(); navigate(`/booking?fieldId=${field.id}`) }}
@@ -281,7 +268,7 @@ export default function HomePage() {
           <div className={styles.stepsGrid}>
             {[
               ['1','Chọn sân','Xem danh sách sân và chọn sân phù hợp với nhu cầu'],
-              ['2','Chọn giờ','Xem lịch trống và chọn khung giờ muốn đặt (tối đa 5 slot)'],
+              ['2','Chọn giờ','Xem lịch trống và chọn khung giờ muốn đặt (tối đa 3 slot)'],
               ['3','Thanh toán','Thanh toán qua VNPay nhanh chóng và bảo mật'],
               ['4','Vào sân','Đến sân, check-in với Staff và bắt đầu thi đấu'],
             ].map(([num, title, desc]) => (

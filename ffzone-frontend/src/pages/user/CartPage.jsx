@@ -23,7 +23,7 @@ export default function CartPage() {
     return (
       <div className={styles.page}>
         <div className="container">
-          <p>⏳ Đang tải giỏ hàng...</p>
+          <p>Đang tải giỏ hàng...</p>
         </div>
       </div>
     );
@@ -37,7 +37,7 @@ export default function CartPage() {
     try {
       await update(item.id, newQty); // quantity ≤ 0 → xóa item (xử lý ở backend)
     } catch {
-      setMsg("❌ Không thể cập nhật. Vui lòng thử lại.");
+      setMsg("Không thể cập nhật. Vui lòng thử lại.");
     } finally {
       setBusy((b) => ({ ...b, [item.id]: false }));
     }
@@ -48,7 +48,7 @@ export default function CartPage() {
     try {
       await remove(item.id);
     } catch {
-      setMsg("❌ Không thể xóa item.");
+      setMsg("Không thể xóa item.");
     } finally {
       setBusy((b) => ({ ...b, [item.id]: false }));
     }
@@ -59,18 +59,18 @@ export default function CartPage() {
     try {
       await clear();
     } catch {
-      setMsg("❌ Không thể xóa giỏ.");
+      setMsg("Không thể xóa giỏ.");
     }
   };
 
   return (
     <div className={styles.page}>
       <div className="container">
-        <h1 className={styles.title}>🛒 Giỏ hàng dịch vụ</h1>
+        <h1 className={styles.title}>Giỏ hàng dịch vụ</h1>
 
         {pendingSlots && (
           <div className={styles.pendingBanner}>
-            🕐 Bạn đang có một lượt đặt sân dở dang.{" "}
+            Bạn đang có một lượt đặt sân dở dang.{" "}
             <button
               className={styles.pendingBannerLink}
               onClick={() => navigate(`/booking/confirm?slots=${pendingSlots}`)}
@@ -84,7 +84,6 @@ export default function CartPage() {
 
         {items.length === 0 ? (
           <div className={styles.empty}>
-            <span>🛒</span>
             <p>Giỏ hàng trống</p>
             <button
               className="btn btn-primary"
@@ -111,10 +110,10 @@ export default function CartPage() {
                     <div className={styles.name}>{item.serviceName}</div>
                     <div className={styles.cat}>
                       {item.serviceCategory === "DRINK"
-                        ? "🥤 Đồ uống"
+                        ? "Đồ uống"
                         : item.serviceCategory === "EQUIPMENT"
-                          ? "⚽ Dụng cụ"
-                          : "🏟️ Tiện ích"}
+                          ? "Dụng cụ"
+                          : "Tiện ích"}
                     </div>
                     <div className={styles.unitPrice}>
                       {Number(item.unitPrice).toLocaleString("vi-VN")}₫ / cái
@@ -152,7 +151,7 @@ export default function CartPage() {
 
               <div className={styles.listFooter}>
                 <button className={styles.clearBtn} onClick={handleClear}>
-                  🗑️ Xóa tất cả
+                  Xóa tất cả
                 </button>
                 <button
                   className="btn btn-outline btn-sm"
@@ -180,7 +179,7 @@ export default function CartPage() {
                 <span>{Number(cart?.total ?? 0).toLocaleString("vi-VN")}₫</span>
               </div>
               <p className={styles.hint}>
-                💡 Dịch vụ sẽ được gắn vào đơn đặt sân khi bạn xác nhận booking.
+                Dịch vụ sẽ được gắn vào đơn đặt sân khi bạn xác nhận booking.
               </p>
               <button
                 className={`btn btn-primary ${styles.bookingBtn}`}
@@ -198,7 +197,7 @@ export default function CartPage() {
                   }
                 }}
               >
-                ⚽ Đặt sân kèm dịch vụ
+                Đặt sân kèm dịch vụ
               </button>
             </div>
           </div>

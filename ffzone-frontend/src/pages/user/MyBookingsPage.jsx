@@ -5,6 +5,8 @@ import { createPaymentUrl } from '../../api/paymentApi'
 import { getActiveServices } from '../../api/serviceApi'
 import { getMyVouchers } from '../../api/voucherApi'
 import { getRefundByBookingId } from '../../api/refundApi'
+import { useAuth } from '../../context/AuthContext'
+import api from '../../services/api'
 import styles from './MyBookingsPage.module.css'
 
 const STATUS_LABEL = {
@@ -17,9 +19,9 @@ const STATUS_LABEL = {
 }
 
 const REFUND_STATUS_CONFIG = {
-  PENDING:   { text: 'Đang chờ hoàn tiền', icon: '⏳', cls: 'refundPending' },
-  COMPLETED: { text: 'Đã hoàn tiền',       icon: '✅', cls: 'refundDone'    },
-  REJECTED:  { text: 'Từ chối hoàn tiền',  icon: '❌', cls: 'refundRejected'},
+  PENDING:   { text: 'Đang chờ hoàn tiền', icon: '', cls: 'refundPending' },
+  COMPLETED: { text: 'Đã hoàn tiền',       icon: '', cls: 'refundDone'    },
+  REJECTED:  { text: 'Từ chối hoàn tiền',  icon: '', cls: 'refundRejected'},
 }
 
 const FILTER_TABS = [
@@ -65,18 +67,17 @@ function RefundInfo({ bookingId, bookingStatus }) {
   if (!refund) {
     return (
       <div className={`${styles.refundBox} ${styles.refundNone}`}>
-        <span>💡</span>
         <span>Đơn bị hủy trước khi thanh toán — không phát sinh hoàn tiền.</span>
       </div>
     )
   }
 
-  const cfg = REFUND_STATUS_CONFIG[refund.status] ?? { text: refund.status, icon: '❓', cls: 'refundPending' }
+  const cfg = REFUND_STATUS_CONFIG[refund.status] ?? { text: refund.status, icon: '', cls: 'refundPending' }
 
   return (
     <div className={`${styles.refundBox} ${styles[cfg.cls]}`}>
       <div className={styles.refundHeader}>
-        <span className={styles.refundIcon}>{cfg.icon}</span>
+        {cfg.icon && <span className={styles.refundIcon}>{cfg.icon}</span>}
         <span className={styles.refundTitle}>{cfg.text}</span>
       </div>
 
@@ -96,12 +97,12 @@ function RefundInfo({ bookingId, bookingStatus }) {
         {/* Ghi chú chính sách */}
         {refund.refundPercent === 0 && (
           <div className={styles.refundPolicy}>
-            ℹ️ Hủy trong vòng 6 giờ trước giờ đá — không được hoàn tiền theo chính sách.
+            Hủy trong vòng 6 giờ trước giờ đá — không được hoàn tiền theo chính sách.
           </div>
         )}
         {refund.refundPercent === 100 && refund.status === 'PENDING' && (
           <div className={styles.refundPolicy}>
-            📋 Nhân viên sẽ liên hệ và chuyển khoản hoàn tiền trong thời gian sớm nhất.
+            Nhân viên sẽ liên hệ và chuyển khoản hoàn tiền trong thời gian sớm nhất.
           </div>
         )}
 
@@ -125,7 +126,7 @@ function RefundInfo({ bookingId, bookingStatus }) {
 
         {refund.status === 'REJECTED' && (
           <div className={styles.refundPolicy}>
-            📝 <strong>Lý do từ chối:</strong> {refund.note || 'Không có ghi chú'}
+            <strong>Lý do từ chối:</strong> {refund.note || 'Không có ghi chú'}
           </div>
         )}
       </div>
@@ -135,6 +136,7 @@ function RefundInfo({ bookingId, bookingStatus }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function MyBookingsPage() {
+  const { user, updateUser } = useAuth()
   const [bookings, setBookings] = useState([])
   const [loading, setLoading]   = useState(true)
   const [filter, setFilter]     = useState('ALL')
@@ -213,6 +215,8 @@ export default function MyBookingsPage() {
 
   const [cancelModal, setCancelModal] = useState(null) // { booking, hoursLeft }
   const [cancelReason, setCancelReason] = useState('')
+  const [phoneInput, setPhoneInput] = useState('')
+  const [cancelError, setCancelError] = useState('')
 
   const load = useCallback(() => {
     setLoading(true)
@@ -237,22 +241,46 @@ export default function MyBookingsPage() {
       hoursLeft = Math.floor((earliest - Date.now()) / 3600000)
     }
     setCancelReason('')
+    setPhoneInput(user?.phone || '')
+    setCancelError('')
     setCancelModal({ booking, hoursLeft })
   }
 
   const handleCancel = async () => {
     if (!cancelModal) return
-    setBusy(b => ({ ...b, [cancelModal.booking.id]: true }))
-    setMsg('')
+    const booking = cancelModal.booking
+    const isRefundable = booking.status === 'CONFIRMED' && (cancelModal.hoursLeft === null || cancelModal.hoursLeft >= 6)
+
+    setBusy(b => ({ ...b, [booking.id]: true }))
+    setCancelError('')
     try {
-      await cancelBooking(cancelModal.booking.id, cancelReason)
+      if (isRefundable && !user?.phone) {
+        const cleanPhone = phoneInput.trim()
+        if (!cleanPhone) {
+          throw new Error('Vui lòng nhập số điện thoại để tiếp tục.')
+        }
+        if (!/^(0|\+84)\d{9,10}$/.test(cleanPhone)) {
+          throw new Error('Số điện thoại không hợp lệ. Vui lòng nhập lại.')
+        }
+
+        // 1. Cập nhật profile người dùng trước
+        const { data } = await api.put('/accounts/me/profile', {
+          fullName: user.fullName,
+          phone: cleanPhone,
+          gender: user.gender || null,
+          dateOfBirth: user.dateOfBirth || null,
+        })
+        updateUser(data)
+      }
+
+      // 2. Gọi API hủy booking
+      await cancelBooking(booking.id, cancelReason)
       setCancelModal(null)
       load()
     } catch (err) {
-      setMsg(err.response?.data?.message || 'Không thể hủy đơn này.')
-      setCancelModal(null)
+      setCancelError(err.response?.data?.message || err.message || 'Không thể hủy đơn này.')
     } finally {
-      setBusy(b => ({ ...b, [cancelModal?.booking?.id]: false }))
+      setBusy(b => ({ ...b, [booking.id]: false }))
     }
   }
 
@@ -291,8 +319,29 @@ export default function MyBookingsPage() {
                 </div>
               ) : (
                 <div className={styles.infoBox}>
-                  ✅ Bạn đang hủy trước giờ đá hơn 6 giờ — sẽ được <strong>hoàn tiền 100%</strong>.
-                  Nhân viên sẽ liên hệ chuyển khoản trong thời gian sớm nhất.
+                  Bạn đang hủy trước giờ đá hơn 6 giờ — sẽ được <strong>hoàn tiền 100%</strong>.
+                  Nhân viên sẽ liên hệ chuyển khoản hoàn tiền cho bạn.
+                </div>
+              )
+            )}
+
+            {/* Check số điện thoại nếu được hoàn tiền */}
+            {cancelModal.booking.status === 'CONFIRMED' && (cancelModal.hoursLeft === null || cancelModal.hoursLeft >= 6) && (
+              !user?.phone ? (
+                <div className={styles.phonePromptBox}>
+                  <label className={styles.modalLabel}>Số điện thoại liên hệ hoàn tiền (bắt buộc):</label>
+                  <input
+                    type="tel"
+                    className={styles.modalInput}
+                    placeholder="Nhập số điện thoại nhận tiền hoàn..."
+                    value={phoneInput}
+                    onChange={e => setPhoneInput(e.target.value)}
+                  />
+                  <p className={styles.phoneHint}>Vui lòng nhập số điện thoại để nhân viên liên hệ hoàn tiền.</p>
+                </div>
+              ) : (
+                <div className={styles.infoBox}>
+                  Nhân viên sẽ liên hệ theo số điện thoại: <strong>{user.phone}</strong> để hoàn tiền.
                 </div>
               )
             )}
@@ -305,6 +354,8 @@ export default function MyBookingsPage() {
               onChange={e => setCancelReason(e.target.value)}
               rows={3}
             />
+
+            {cancelError && <div className={styles.modalError}>Lỗi: {cancelError}</div>}
 
             <div className={styles.modalActions}>
               <button className={styles.modalCancelBtn} onClick={() => setCancelModal(null)}>
@@ -323,7 +374,7 @@ export default function MyBookingsPage() {
       )}
 
       <div className="container">
-        <h1 className={styles.title}>📋 Đơn đặt sân của tôi</h1>
+        <h1 className={styles.title}>Đơn đặt sân của tôi</h1>
 
         <div className={styles.tabs}>
           {FILTER_TABS.map(t => (
@@ -337,7 +388,7 @@ export default function MyBookingsPage() {
           ))}
         </div>
 
-        {msg && <div className={styles.errorBox}>⚠️ {msg}</div>}
+        {msg && <div className={styles.errorBox}>Lỗi: {msg}</div>}
 
         {loading ? (
           <div className={styles.loadingWrap}>
@@ -346,7 +397,6 @@ export default function MyBookingsPage() {
           </div>
         ) : filtered.length === 0 ? (
           <div className={styles.empty}>
-            <span>📅</span>
             <p>Chưa có đơn đặt sân nào</p>
             <Link to="/booking" className="btn btn-primary">Đặt sân ngay</Link>
           </div>
@@ -360,7 +410,7 @@ export default function MyBookingsPage() {
                   <div className={styles.cardTop} onClick={() => setExpandedId(expanded ? null : b.id)}>
                     <div className={styles.cardTopLeft}>
                       <span className={styles.bookingCode}>{b.bookingCode}</span>
-                      <span className={styles.fieldName}>⚽ {b.fieldName}</span>
+                      <span className={styles.fieldName}>{b.fieldName}</span>
                     </div>
                     <div className={styles.cardTopRight}>
                       <span className={`${styles.statusBadge} ${styles[statusInfo.cls]}`}>
@@ -376,7 +426,7 @@ export default function MyBookingsPage() {
                       <div className={styles.slotGrid}>
                         {b.slots?.map(s => (
                           <span key={s.fieldSlotId} className={styles.slotTag}>
-                            📅 {s.slotDate} · 🕐 {fmt(s.startTime)}–{fmt(s.endTime)}
+                            Ngày: {s.slotDate} · Giờ: {fmt(s.startTime)}–{fmt(s.endTime)}
                           </span>
                         ))}
                       </div>
@@ -399,7 +449,7 @@ export default function MyBookingsPage() {
                         </div>
                       </div>
 
-                      {b.note && <p className={styles.note}>📝 {b.note}</p>}
+                      {b.note && <p className={styles.note}>Ghi chú: {b.note}</p>}
 
                       {/* ── Thông tin hoàn tiền (chỉ hiển thị khi CANCELLED) ── */}
                       <RefundInfo bookingId={b.id} bookingStatus={b.status} />
@@ -412,7 +462,7 @@ export default function MyBookingsPage() {
                             disabled={busy[b.id]}
                             onClick={() => handlePayAgain(b)}
                           >
-                            💳 Thanh toán ngay
+                            Thanh toán ngay
                           </button>
                         )}
                         {canAddVenueService(b.status) && (
@@ -421,7 +471,7 @@ export default function MyBookingsPage() {
                             disabled={busy[b.id]}
                             onClick={() => openVenueModal(b.id)}
                           >
-                            ➕ Đặt thêm dịch vụ
+                            Đặt thêm dịch vụ
                           </button>
                         )}
                         {canCancel(b.status) && (
@@ -449,11 +499,11 @@ export default function MyBookingsPage() {
         <div className={styles.modalOverlay} onClick={() => !venueSubmitting && setVenueModal(null)}>
           <div className={styles.modalBox} onClick={e => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h2>➕ Đặt thêm dịch vụ tại sân</h2>
+              <h2>Đặt thêm dịch vụ tại sân</h2>
               <button className={styles.modalClose} onClick={() => !venueSubmitting && setVenueModal(null)}>✕</button>
             </div>
 
-            {venueError && <div className={styles.venueError}>⚠️ {venueError}</div>}
+            {venueError && <div className={styles.venueError}>Lỗi: {venueError}</div>}
 
             {venueLoading ? (
               <div className={styles.venueLoading}><div className={styles.spinner} /><p>Đang tải...</p></div>
@@ -461,7 +511,7 @@ export default function MyBookingsPage() {
               <>
                 {/* Danh sách dịch vụ */}
                 <div className={styles.modalSection}>
-                  <h3 className={styles.modalSectionTitle}>🛒 Chọn dịch vụ</h3>
+                  <h3 className={styles.modalSectionTitle}>Chọn dịch vụ</h3>
                   <div className={styles.venueServiceList}>
                     {allServices.map(svc => {
                       const qty = venueQty[svc.id] || 0
@@ -484,7 +534,7 @@ export default function MyBookingsPage() {
 
                 {/* Chọn voucher */}
                 <div className={styles.modalSection}>
-                  <h3 className={styles.modalSectionTitle}>🎟️ Voucher (tùy chọn)</h3>
+                  <h3 className={styles.modalSectionTitle}>Voucher (tùy chọn)</h3>
                   {myVouchers.length === 0 ? (
                     <p className={styles.venueHint}>Bạn không có voucher nào còn hiệu lực.</p>
                   ) : (
@@ -534,7 +584,7 @@ export default function MyBookingsPage() {
                   disabled={venueSubmitting || venueItems.length === 0}
                   onClick={handleVenueSubmit}
                 >
-                  {venueSubmitting ? 'Đang xử lý...' : '💳 Xác nhận & Thanh toán VNPay'}
+                  {venueSubmitting ? 'Đang xử lý...' : 'Xác nhận & Thanh toán VNPay'}
                 </button>
               </>
             )}

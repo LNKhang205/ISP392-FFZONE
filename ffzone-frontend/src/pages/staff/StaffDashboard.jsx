@@ -9,16 +9,16 @@ import { getLocalDateString } from '../../utils/date'
 /* ── Sidebar ── */
 function Sidebar({ onLogout }) {
   const navItems = [
-    { to: '/staff',          label: '📋 Lịch hôm nay',   end: true },
-    { to: '/staff/bookings', label: '📅 Quản lý booking' },
-    { to: '/staff/services', label: '🛒 Dịch vụ tại sân' },
-    { to: '/staff/checkin',  label: '✅ Check-in'         },
-    { to: '/staff/refunds',  label: '💰 Hoàn tiền'        },
+    { to: '/staff',          label: 'Lịch hôm nay',   end: true },
+    { to: '/staff/bookings', label: 'Quản lý booking' },
+    { to: '/staff/services', label: 'Dịch vụ tại sân' },
+    { to: '/staff/checkin',  label: 'Check-in'         },
+    { to: '/staff/refunds',  label: 'Hoàn tiền'        },
   ]
   return (
     <aside className={styles.sidebar}>
       <div className={styles.sidebarLogo}>
-        <span>⚽</span> <strong>FF</strong>Zone
+        <strong>FF</strong>Zone
         <div className={styles.sidebarRole}>Nhân viên</div>
       </div>
       <nav className={styles.sidebarNav}>
@@ -36,7 +36,7 @@ function Sidebar({ onLogout }) {
         ))}
       </nav>
       <div className={styles.sidebarFooter}>
-        <button onClick={onLogout} className={styles.logoutBtn}>🚪 Đăng xuất</button>
+        <button onClick={onLogout} className={styles.logoutBtn}>Đăng xuất</button>
       </div>
     </aside>
   )
@@ -113,7 +113,7 @@ function TodaySchedule() {
                       {statusLabel[slot.status] || slot.status}
                     </div>
                     {slot.bookerName && (
-                      <div className={styles.slotBooker}>👤 {slot.bookerName}</div>
+                      <div className={styles.slotBooker}>Khách: {slot.bookerName}</div>
                     )}
                   </div>
                 ))}
@@ -385,9 +385,9 @@ function CheckIn() {
       // Cập nhật cả card trong danh sách lẫn card chi tiết
       setTodayBookings(prev => prev.map(b => b.id === r.data.id ? r.data : b))
       setSelectedBooking(r.data)
-      setActionMsg({ ok: true, text: `✅ Check-in thành công lúc ${fmtTime(r.data.checkinAt)}` })
+      setActionMsg({ ok: true, text: `Check-in thành công lúc ${fmtTime(r.data.checkinAt)}` })
     } catch (e) {
-      setActionMsg({ ok: false, text: '❌ ' + (e.response?.data?.message || 'Không thể check-in') })
+      setActionMsg({ ok: false, text: e.response?.data?.message || 'Không thể check-in' })
     } finally { setBusy(false) }
   }
 
@@ -398,9 +398,9 @@ function CheckIn() {
       const r = await api.post(`/bookings/${booking.id}/checkout`)
       setTodayBookings(prev => prev.map(b => b.id === r.data.id ? r.data : b))
       setSelectedBooking(r.data)
-      setActionMsg({ ok: true, text: `✅ Check-out thành công lúc ${fmtTime(r.data.checkoutAt)}` })
+      setActionMsg({ ok: true, text: `Check-out thành công lúc ${fmtTime(r.data.checkoutAt)}` })
     } catch (e) {
-      setActionMsg({ ok: false, text: '❌ ' + (e.response?.data?.message || 'Không thể check-out') })
+      setActionMsg({ ok: false, text: e.response?.data?.message || 'Không thể check-out' })
     } finally { setBusy(false) }
   }
 
@@ -421,7 +421,7 @@ function CheckIn() {
         <div className={styles.checkinHeader}>
           <div>
             <span className={styles.checkinCode}>{booking.bookingCode}</span>
-            <span className={styles.checkinField}>⚽ {booking.fieldName} ({booking.fieldCode})</span>
+            <span className={styles.checkinField}>{booking.fieldName} ({booking.fieldCode})</span>
           </div>
           <span className={styles.statusBadge} style={{ background: cfg.bg, color: cfg.color }}>
             {cfg.text}
@@ -435,7 +435,7 @@ function CheckIn() {
             <div className={styles.slotList}>
               {booking.slots?.map(s => (
                 <span key={s.fieldSlotId} className={styles.slotTag}>
-                  📅 {s.slotDate} · {fmtSlot(s)}
+                  Ngày: {s.slotDate} · Giờ: {fmtSlot(s)}
                 </span>
               ))}
             </div>
@@ -447,13 +447,13 @@ function CheckIn() {
           {booking.checkinAt && (
             <div className={styles.infoRow}>
               <span>Check-in lúc</span>
-              <span className={styles.tsGreen}>🟢 {fmtTime(booking.checkinAt)}</span>
+              <span className={styles.tsGreen}>{fmtTime(booking.checkinAt)}</span>
             </div>
           )}
           {booking.checkoutAt && (
             <div className={styles.infoRow}>
               <span>Check-out lúc</span>
-              <span className={styles.tsBlue}>🔵 {fmtTime(booking.checkoutAt)}</span>
+              <span className={styles.tsBlue}>{fmtTime(booking.checkoutAt)}</span>
             </div>
           )}
         </div>
@@ -465,15 +465,15 @@ function CheckIn() {
         <div className={styles.checkinActions}>
           {booking.status === 'CONFIRMED' && (
             <button className={styles.btnCheckin} onClick={() => handleCheckin(booking)} disabled={busy}>
-              {busy ? 'Đang xử lý...' : '✅ Xác nhận Check-in'}
+              {busy ? 'Đang xử lý...' : 'Xác nhận Check-in'}
             </button>
           )}
           {booking.status === 'IN_PROGRESS' && (
             <button className={styles.btnCheckout} onClick={() => handleCheckout(booking)} disabled={busy}>
-              {busy ? 'Đang xử lý...' : '🏁 Xác nhận Check-out'}
+              {busy ? 'Đang xử lý...' : 'Xác nhận Check-out'}
             </button>
           )}
-          {booking.status === 'COMPLETED' && <p className={styles.doneText}>🎉 Booking đã hoàn thành.</p>}
+          {booking.status === 'COMPLETED' && <p className={styles.doneText}>Booking đã hoàn thành.</p>}
           {booking.status === 'CANCELLED' && <p className={styles.errText}>Booking này đã bị hủy.</p>}
           {booking.status === 'PENDING_PAYMENT' && <p className={styles.errText}>Chưa thanh toán, chưa thể check-in.</p>}
         </div>

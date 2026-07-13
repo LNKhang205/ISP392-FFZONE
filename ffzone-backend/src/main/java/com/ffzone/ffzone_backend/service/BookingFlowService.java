@@ -323,20 +323,6 @@ public class BookingFlowService {
 
         // BR-48/49: validate thời gian hủy trước khi làm bất cứ điều gì
         boolean wasPendingPayment = booking.getStatus() == BookingStatus.PENDING_PAYMENT;
-        if (!wasPendingPayment && !bookingSlots.isEmpty()) {
-            LocalDateTime earliest = bookingSlots.stream()
-                .map(bs -> java.time.LocalDateTime.of(bs.getFieldSlot().getSlotDate(), bs.getFieldSlot().getStartTime()))
-                .min(LocalDateTime::compareTo).orElse(LocalDateTime.now());
-            long hoursLeft = java.time.Duration.between(LocalDateTime.now(), earliest).toHours();
-            long minutesLeft = java.time.Duration.between(LocalDateTime.now(), earliest).toMinutes() % 60;
-            if (hoursLeft < CANCEL_FULL_REFUND_HOURS) {
-                throw AppException.badRequest(
-                    "Không thể hủy đơn và được hoàn tiền vì chỉ còn " + hoursLeft + " giờ " + minutesLeft +
-                    " phút trước giờ đá (chính sách yêu cầu hủy trước ít nhất " + CANCEL_FULL_REFUND_HOURS +
-                    " giờ). Nếu vẫn hủy, bạn sẽ mất 100% tiền đặt cọc."
-                );
-            }
-        }
 
         releaseSlots(bookingSlots);
         booking.setStatus(BookingStatus.CANCELLED);
@@ -558,7 +544,7 @@ public class BookingFlowService {
                 .cancelType(com.ffzone.ffzone_backend.enums.CancelReasonType.USER_CANCEL)
                 .refundPercent(refundPercent)
                 .refundAmount(refundAmount)
-                .status(com.ffzone.ffzone_backend.enums.RefundStatus.PENDING)
+                .status(refundPercent > 0 ? com.ffzone.ffzone_backend.enums.RefundStatus.PENDING : com.ffzone.ffzone_backend.enums.RefundStatus.COMPLETED)
                 .build();
         refundRepository.save(refund);
 
