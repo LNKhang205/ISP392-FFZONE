@@ -70,6 +70,29 @@ public class EmailService {
         send(toEmail, subject, body);
     }
 
+    // ── 2b. Quên mật khẩu — gửi mã OTP ───────────────────────────────────────
+
+    @Async
+    public void sendOtpPasswordReset(String toEmail, String fullName, String otpCode, int expiryMinutes) {
+        String subject = "🔑 Mã OTP khôi phục mật khẩu FFZone";
+        String content =
+            "<p>Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.</p>" +
+            "<div style='background:#f8fafc;border-radius:8px;padding:20px;margin:16px 0;text-align:center;'>" +
+            "  <p style='margin:0 0 8px;color:#64748b;font-size:0.85em;'>Mã OTP của bạn</p>" +
+            "  <p style='margin:0;font-size:2rem;font-weight:700;letter-spacing:6px;color:#3b82f6;'>"
+                + otpCode + "</p>" +
+            "</div>" +
+            "<p>Mã này có hiệu lực trong <strong>" + expiryMinutes + " phút</strong>.</p>" +
+            "<p style='color:#dc2626;'>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.</p>";
+
+        String body = buildHtml("Khôi phục mật khẩu 🔑",
+            "Xin chào <strong>" + fullName + "</strong>,",
+            content,
+            "Đặt lại mật khẩu", frontendUrl + "/reset-password",
+            "#f59e0b");
+        send(toEmail, subject, body);
+    }
+
     // ── 3. Booking CONFIRMED ──────────────────────────────────────────────────
 
     @Async

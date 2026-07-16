@@ -30,6 +30,7 @@ public class AccountService {
 
     private final AccountRepository accountRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
     private static final List<String> ALLOWED_AVATAR_EXTENSIONS = List.of(".jpg", ".jpeg", ".png", ".gif", ".webp");
     private static final String AVATAR_PUBLIC_URL_PREFIX = "uploads/avatars/";
@@ -119,6 +120,8 @@ public class AccountService {
 
         account.setPasswordHash(passwordEncoder.encode(req.getNewPassword()));
         accountRepository.save(account);
+
+        emailService.sendPasswordChanged(account.getEmail(), account.getFullName());
     }
 
     @Transactional

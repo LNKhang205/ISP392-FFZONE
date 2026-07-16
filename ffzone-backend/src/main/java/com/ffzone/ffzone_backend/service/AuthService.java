@@ -26,6 +26,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final OtpService otpService;
+    private final EmailService emailService;
 
     public AuthResponse login(LoginRequest req) {
         Account account = accountRepository.findByEmail(req.getEmail())
@@ -73,6 +74,8 @@ public class AuthService {
 
         account = accountRepository.save(account);
 
+        emailService.sendWelcome(account.getEmail(), account.getFullName());
+
         String token = jwtUtil.generateToken(
             account.getEmail(),
             account.getRole().name(),
@@ -107,7 +110,7 @@ public class AuthService {
             throw AppException.badRequest("Tài khoản này đăng nhập bằng Google. Vui lòng dùng 'Tiếp tục với Google'.");
         }
 
-        otpService.generateOtp(account.getEmail());
+        otpService.generateOtp(account.getEmail(), account.getFullName());
     }
 
     @Transactional
@@ -123,5 +126,7 @@ public class AuthService {
         account.setPasswordHash(passwordEncoder.encode(req.getNewPassword()));
         accountRepository.save(account);
         log.info("Đặt lại mật khẩu thành công cho email: {}", req.getEmail());
+
+        emailService.sendPasswordChanged(account.getEmail(), account.getFullName());
     }
 }

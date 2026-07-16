@@ -7,6 +7,7 @@ import FieldListPage from './pages/public/FieldListPage'
 import FieldDetailPage from './pages/public/FieldDetailPage'
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import OAuth2CallbackPage from './pages/auth/OAuth2CallbackPage'
 import NotFoundPage from './pages/public/NotFoundPage'
 import BookingPage from './pages/public/BookingPage'
@@ -58,6 +59,7 @@ export default function App() {
       <Route path="/services" element={<PublicLayout><ServicesPage /></PublicLayout>} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       
       {/* Payment result — VNPay redirect trình duyệt về đây, không cần Navbar/Footer */}
       <Route path="/payment-result" element={<PaymentResultPage />} />

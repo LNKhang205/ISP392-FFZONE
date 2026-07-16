@@ -31,6 +31,7 @@ public class RefundService {
 
     private final RefundRepository  refundRepository;
     private final BookingRepository bookingRepository;
+    private final EmailService      emailService;
 
     /** Danh sách refund đang chờ xử lý — Staff dashboard. */
     @Transactional
@@ -80,6 +81,13 @@ public class RefundService {
         if (refund.getRefundPercent() > 0) {
             booking.setStatus(BookingStatus.REFUNDED);
             bookingRepository.save(booking);
+
+            emailService.sendRefundCompleted(
+                booking.getAccount().getEmail(),
+                booking.getAccount().getFullName(),
+                booking.getBookingCode(),
+                refund.getRefundAmount()
+            );
         }
         // refund_percent = 0: booking đã CANCELLED từ trước (penalty 100%, BR-49) — không đổi thêm.
 

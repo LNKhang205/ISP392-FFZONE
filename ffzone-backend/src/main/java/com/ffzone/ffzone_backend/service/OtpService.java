@@ -2,6 +2,7 @@ package com.ffzone.ffzone_backend.service;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -12,7 +13,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class OtpService {
+
+    private final EmailService emailService;
 
     private static final int OTP_EXPIRY_MINUTES = 10;
     private final Map<String, OtpData> otpStorage = new ConcurrentHashMap<>();
@@ -25,17 +29,15 @@ public class OtpService {
         private final LocalDateTime expiryTime;
     }
 
-    public String generateOtp(String email) {
+    /** Sinh OTP và gửi qua email. {@code fullName} dùng để cá nhân hóa email. */
+    public String generateOtp(String email, String fullName) {
         String code = String.format("%06d", random.nextInt(1000000));
         LocalDateTime expiryTime = LocalDateTime.now().plusMinutes(OTP_EXPIRY_MINUTES);
         otpStorage.put(email, new OtpData(code, expiryTime));
-        
-        log.info("========================================");
-        log.info("Gửi OTP khôi phục mật khẩu tới email: {}", email);
-        log.info("Mã OTP của bạn: {}", code);
-        log.info("Mã này có hiệu lực trong {} phút (đến {})", OTP_EXPIRY_MINUTES, expiryTime);
-        log.info("========================================");
-        
+
+        log.info("Đã sinh OTP khôi phục mật khẩu cho email: {} (hết hạn lúc {})", email, expiryTime);
+        emailService.sendOtpPasswordReset(email, fullName, code, OTP_EXPIRY_MINUTES);
+
         return code;
     }
 

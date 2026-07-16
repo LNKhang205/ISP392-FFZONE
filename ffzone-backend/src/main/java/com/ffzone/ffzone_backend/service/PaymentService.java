@@ -55,6 +55,7 @@ public class PaymentService {
     private final BookingSlotRepository bookingSlotRepository;
     private final FieldSlotRepository fieldSlotRepository;
     private final PaymentRepository paymentRepository;
+    private final EmailService emailService;
 
     private static final DateTimeFormatter VNP_DATE_FMT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
@@ -242,6 +243,13 @@ public class PaymentService {
                     slot.setStatus(SlotStatus.OCCUPIED);
                     fieldSlotRepository.save(slot);
                 }
+
+                emailService.sendBookingConfirmed(
+                    booking.getAccount().getEmail(),
+                    booking.getAccount().getFullName(),
+                    booking,
+                    bookingSlots
+                );
             }
 
             log.info("[Payment IPN] Thanh toán thành công booking {} - txnRef={}",

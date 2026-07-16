@@ -48,7 +48,7 @@ public class AuthController {
     public ResponseEntity<Map<String, String>> forgotPassword(
             @Valid @RequestBody ForgotPasswordRequest req) {
         authService.forgotPassword(req);
-        return ResponseEntity.ok(Map.of("message", "OTP khôi phục mật khẩu đã được gửi, vui lòng kiểm tra console"));
+        return ResponseEntity.ok(Map.of("message", "Mã OTP khôi phục mật khẩu đã được gửi tới email của bạn"));
     }
 
     @PostMapping("/reset-password")

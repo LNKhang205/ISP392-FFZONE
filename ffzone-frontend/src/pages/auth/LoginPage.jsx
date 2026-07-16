@@ -53,6 +53,9 @@ export default function LoginPage() {
             <label>Mật khẩu</label>
             <input type="password" placeholder="••••••••" value={form.password}
               onChange={e => setForm(f => ({...f, password: e.target.value}))} required />
+            <div style={{textAlign:'right', marginTop:6}}>
+              <Link to="/forgot-password" style={{fontSize:13, color:'var(--gray-500)'}}>Quên mật khẩu?</Link>
+            </div>
           </div>
           {error && <p className="error-msg">{error}</p>}
           <button type="submit" className="btn btn-primary"
