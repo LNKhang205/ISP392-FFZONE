@@ -31,8 +31,10 @@ public class RefundController {
     }
 
     @GetMapping("/booking/{bookingId}")
-    public ResponseEntity<RefundResponse> findByBookingId(@PathVariable UUID bookingId) {
-        return ResponseEntity.ok(refundService.findByBookingId(bookingId));
+    public ResponseEntity<RefundResponse> findByBookingId(
+            @AuthenticationPrincipal Account account,
+            @PathVariable UUID bookingId) {
+        return ResponseEntity.ok(refundService.findByBookingId(account, bookingId));
     }
 
     /** Staff xác nhận đã chuyển khoản hoàn tiền thủ công xong. */

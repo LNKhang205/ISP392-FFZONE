@@ -345,12 +345,32 @@ export default function BookingConfirmPage() {
                 <div className={styles.slotList}>
                   {cartItems.map((item) => (
                     <div key={item.id} className={styles.slotRow}>
-                      <span>
-                        {item.serviceName} × {item.quantity}
+                      <span style={{ flex: 1 }}>{item.serviceName}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <button
+                          type="button"
+                          disabled={busyServiceId === item.serviceId}
+                          style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid #d1d5db', background: '#f9fafb', cursor: 'pointer', fontWeight: 700 }}
+                          onClick={() => handleChangeQty(item, item.quantity - 1)}
+                        >−</button>
+                        <span style={{ minWidth: 20, textAlign: 'center' }}>{item.quantity}</span>
+                        <button
+                          type="button"
+                          disabled={busyServiceId === item.serviceId}
+                          style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid #d1d5db', background: '#f9fafb', cursor: 'pointer', fontWeight: 700 }}
+                          onClick={() => handleChangeQty(item, item.quantity + 1)}
+                        >+</button>
+                      </div>
+                      <span style={{ minWidth: 80, textAlign: 'right' }}>
+                        {Number(item.subtotal).toLocaleString('vi-VN')}₫
                       </span>
-                      <span>
-                        {Number(item.subtotal).toLocaleString("vi-VN")}₫
-                      </span>
+                      <button
+                        type="button"
+                        disabled={busyServiceId === item.serviceId}
+                        title="Xóa dịch vụ này"
+                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 700, fontSize: 16, padding: '0 4px' }}
+                        onClick={() => handleChangeQty(item, 0)}
+                      >✕</button>
                     </div>
                   ))}
                 </div>

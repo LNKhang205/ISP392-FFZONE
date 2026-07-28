@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { getMyBookings, cancelBooking, addServicesAtVenue } from '../../api/bookingApi'
-import { createPaymentUrl } from '../../api/paymentApi'
+import { createPaymentUrl, createAddonPaymentUrl } from '../../api/paymentApi'
 import { getActiveServices } from '../../api/serviceApi'
 import { getMyVouchers } from '../../api/voucherApi'
 import { getRefundByBookingId } from '../../api/refundApi'
@@ -56,20 +56,27 @@ function RefundInfo({ bookingId, bookingStatus }) {
 
     getRefundByBookingId(bookingId)
       .then(setRefund)
-      .catch(() => setRefund(null))    // booking bị hủy trước khi thanh toán → không có refund
+      .catch((err) => {
+        if (err.response?.status === 404) {
+          setRefund({ isNotPaid: true })
+        } else {
+          setRefund({ isError: true })
+        }
+      })
       .finally(() => setLoading(false))
   }, [bookingId, bookingStatus])
 
   if (bookingStatus !== 'CANCELLED' && bookingStatus !== 'REFUNDED') return null
   if (loading) return <div className={styles.refundBox}><span className={styles.refundLoading}>Đang kiểm tra hoàn tiền…</span></div>
 
+  // Lỗi hệ thống hoặc phân quyền tải thông tin hoàn tiền
+  if (refund?.isError) {
+    return null
+  }
+
   // Booking hủy trước khi thanh toán (PENDING_PAYMENT) → không có refund record
-  if (!refund) {
-    return (
-      <div className={`${styles.refundBox} ${styles.refundNone}`}>
-        <span>Đơn bị hủy trước khi thanh toán — không phát sinh hoàn tiền.</span>
-      </div>
-    )
+  if (!refund || refund.isNotPaid) {
+    return null
   }
 
   const cfg = REFUND_STATUS_CONFIG[refund.status] ?? { text: refund.status, icon: '', cls: 'refundPending' }
@@ -202,8 +209,8 @@ export default function MyBookingsPage() {
     setVenueError('')
     try {
       const result = await addServicesAtVenue(venueModal, venueItems, venueVoucher?.code ?? null)
-      // Tạo payment URL cho phần tiền dịch vụ mới
-      const payment = await createPaymentUrl(result.bookingId)
+      // Dùng createAddonPaymentUrl để chỉ charge tiền dịch vụ mới, KHÔNG bao gồm tiền sân đã thanh toán
+      const payment = await createAddonPaymentUrl(result.bookingId, result.payAmount)
       setVenueModal(null)
       window.location.href = payment.paymentUrl
     } catch (err) {
@@ -435,7 +442,19 @@ export default function MyBookingsPage() {
                       <div className={styles.amountGrid}>
                         <div><span>Tiền sân</span><span>{Number(b.fieldAmount).toLocaleString('vi-VN')}₫</span></div>
                         {Number(b.serviceAmount) > 0 && (
-                          <div><span>Dịch vụ</span><span>{Number(b.serviceAmount).toLocaleString('vi-VN')}₫</span></div>
+                          <>
+                            <div><span>Dịch vụ</span><span>{Number(b.serviceAmount).toLocaleString('vi-VN')}₫</span></div>
+                            {b.services && b.services.length > 0 && (
+                              <div className={styles.serviceDetailList}>
+                                {b.services.map(item => (
+                                  <div key={item.id} className={styles.serviceDetailRow}>
+                                    <span>• {item.serviceName} <span className={styles.qtyText}>x{item.quantity}</span></span>
+                                    <span>{Number(item.totalPrice).toLocaleString('vi-VN')}₫</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </>
                         )}
                         {Number(b.discountAmount) > 0 && (
                           <div>

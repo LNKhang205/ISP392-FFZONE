@@ -106,6 +106,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/payments/**").authenticated()
 
                 // ── Refund ────────────────────────────────────────────────
+                .requestMatchers("/api/refunds/booking/**").authenticated()
                 .requestMatchers("/api/refunds/**")
                     .hasAnyRole("STAFF", "OWNER", "IT_ADMIN")
 

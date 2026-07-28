@@ -27,6 +27,7 @@ public class BookingItemService {
     private final CartRepository               cartRepository;
 
     /** Lấy danh sách dịch vụ của một Booking */
+    @Transactional(readOnly = true)
     public List<BookingServiceResponse> getItems(UUID bookingId) {
         return bookingServiceRepository.findByBookingId(bookingId)
             .stream().map(BookingServiceResponse::from).toList();

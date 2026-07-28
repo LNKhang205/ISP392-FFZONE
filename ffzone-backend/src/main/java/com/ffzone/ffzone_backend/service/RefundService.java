@@ -49,9 +49,15 @@ public class RefundService {
     }
 
     @Transactional
-    public RefundResponse findByBookingId(UUID bookingId) {
+    public RefundResponse findByBookingId(Account account, UUID bookingId) {
         Refund r = refundRepository.findByBookingId(bookingId)
                 .orElseThrow(() -> AppException.notFound("Không có yêu cầu hoàn tiền cho booking này"));
+
+        // USER chỉ được phép xem refund của chính booking của mình
+        if (account.getRole().name().equals("USER") && !r.getBooking().getAccount().getId().equals(account.getId())) {
+            throw AppException.forbidden("Không có quyền xem thông tin hoàn tiền của booking này");
+        }
+
         return RefundResponse.from(r);
     }
 

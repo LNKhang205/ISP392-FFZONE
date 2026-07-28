@@ -68,12 +68,13 @@ public class CartService {
             throw AppException.forbidden("Không có quyền sửa item này");
 
         if (quantity <= 0) {
+            cart.getItems().remove(item);
             cartItemRepository.delete(item);
         } else {
             item.setQuantity(quantity);
             cartItemRepository.save(item);
         }
-        return CartResponse.from(cartRepository.findByAccountIdWithItems(account.getId()).orElse(cart));
+        return CartResponse.from(cart);
     }
 
     /** Xóa 1 item khỏi giỏ */

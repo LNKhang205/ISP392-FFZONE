@@ -86,7 +86,7 @@ export default function BookingPage() {
   const preFieldId = searchParams.get('fieldId')
 
   const days = buildNext7Days()
-  const [selDate,     setSelDate]    = useState(days[0].iso)
+  const [selDate,     setSelDate]    = useState(searchParams.get('date') || days[0].iso)
   const [filterType,  setFilterType] = useState('ALL')
   const [filterField, setFilterField]= useState(preFieldId || 'ALL')
   const [filterAvail, setFilterAvail]= useState(false)

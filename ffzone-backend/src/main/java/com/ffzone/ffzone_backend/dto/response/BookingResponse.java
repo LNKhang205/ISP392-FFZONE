@@ -43,6 +43,7 @@ public class BookingResponse {
     private String note;
 
     private List<SlotInfo> slots;
+    private List<BookingServiceResponse> services;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -86,6 +87,10 @@ public class BookingResponse {
                                 .endTime(bs.getFieldSlot().getEndTime())
                                 .bookedPrice(bs.getBookedPrice())
                                 .build())
+                        .toList())
+                .services(b.getServices() == null ? List.of() : b.getServices().stream()
+                        .filter(bs -> bs.getCancelledAt() == null)
+                        .map(BookingServiceResponse::from)
                         .toList())
                 .createdAt(b.getCreatedAt())
                 .updatedAt(b.getUpdatedAt())

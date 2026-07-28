@@ -21,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -59,7 +60,7 @@ public class PaymentService {
 
     private static final DateTimeFormatter VNP_DATE_FMT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
-    // ── 1. Tạo URL thanh toán ────────────────────────────────────────────────
+    // ── 1. Tạo URL thanh toán (booking gốc - PENDING_PAYMENT) ───────────────────
 
     @Transactional
     public PaymentUrlResponse createPaymentUrl(UUID bookingId, HttpServletRequest httpRequest) {
@@ -76,11 +77,8 @@ public class PaymentService {
         if (amountVnd <= 0)
             throw AppException.badRequest("Số tiền thanh toán không hợp lệ");
 
-        // Mỗi lần tạo payment URL -> 1 vnp_TxnRef mới (cho phép retry nếu lần trước
-        // fail)
         String txnRef = booking.getBookingCode() + "-" + System.currentTimeMillis();
 
-        // Upsert Payment record (PENDING)
         Payment payment = paymentRepository.findByBookingId(bookingId)
                 .orElseGet(() -> Payment.builder().booking(booking).build());
         payment.setAmount(booking.getTotalAmount());
@@ -89,47 +87,73 @@ public class PaymentService {
         payment.setVnpTxnRef(txnRef);
         paymentRepository.save(payment);
 
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime expireDate = booking.getPaymentDeadline() != null
+                ? booking.getPaymentDeadline()
+                : now.plusMinutes(10);
+        if (expireDate.isBefore(now.plusMinutes(1))) expireDate = now.plusMinutes(1);
+
+        return buildPaymentUrl(booking, txnRef, amountVnd, now, expireDate, httpRequest,
+                "Thanh toan booking " + booking.getBookingCode());
+    }
+
+    /**
+     * Tạo URL thanh toán VNPay cho dịch vụ bổ sung tại sân (CONFIRMED / IN_PROGRESS).
+     * payAmount được tính chính xác từ addServicesAtVenue — chỉ tiền dịch vụ mới và discount mới,
+     * KHÔNG bao gồm tiền sân đã thanh toán trước đó.
+     */
+    @Transactional
+    public PaymentUrlResponse createAddonPaymentUrl(UUID bookingId, BigDecimal payAmount, HttpServletRequest httpRequest) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> AppException.notFound("Booking không tồn tại: " + bookingId));
+
+        if (booking.getStatus() != BookingStatus.CONFIRMED && booking.getStatus() != BookingStatus.IN_PROGRESS)
+            throw AppException.badRequest("Booking không ở trạng thái cho phép thanh toán dịch vụ bổ sung");
+
+        if (payAmount == null || payAmount.compareTo(BigDecimal.ZERO) <= 0)
+            throw AppException.badRequest("Số tiền dịch vụ không hợp lệ");
+
+        long amountVnd = payAmount.longValue();
+        String txnRef = booking.getBookingCode() + "-SVC-" + System.currentTimeMillis();
+
+        // Upsert payment record (1 payment per booking — cập nhật với amount dịch vụ mới)
+        Payment payment = paymentRepository.findByBookingId(bookingId)
+                .orElseGet(() -> Payment.builder().booking(booking).build());
+        payment.setAmount(payAmount);
+        payment.setPaymentMethod("VNPAY");
+        payment.setStatus(PaymentStatus.PENDING);
+        payment.setVnpTxnRef(txnRef);
+        paymentRepository.save(payment);
+
+        LocalDateTime now = LocalDateTime.now();
+        log.info("[Payment] Tạo addon payment URL cho booking {} - txnRef={} - amount={}đ",
+                booking.getBookingCode(), txnRef, amountVnd);
+
+        return buildPaymentUrl(booking, txnRef, amountVnd, now, now.plusMinutes(10), httpRequest,
+                "Thanh toan dich vu bo sung " + booking.getBookingCode());
+    }
+
+    /** Tạo VNPay URL dùng chung cho cả booking gốc và addon. */
+    private PaymentUrlResponse buildPaymentUrl(Booking booking, String txnRef, long amountVnd,
+            LocalDateTime now, LocalDateTime expireDate, HttpServletRequest httpRequest, String orderInfo) {
         Map<String, String> params = new HashMap<>();
         params.put("vnp_Version", vnPayConfig.getVersion());
         params.put("vnp_Command", vnPayConfig.getCommand());
         params.put("vnp_TmnCode", vnPayConfig.getTmnCode());
-        params.put("vnp_Amount", String.valueOf(amountVnd * 100)); // VNPay yêu cầu nhân 100 (đơn vị: xu)
+        params.put("vnp_Amount", String.valueOf(amountVnd * 100));
         params.put("vnp_CurrCode", vnPayConfig.getCurrCode());
         params.put("vnp_TxnRef", txnRef);
-        params.put("vnp_OrderInfo", "Thanh toan booking " + booking.getBookingCode());
+        params.put("vnp_OrderInfo", orderInfo);
         params.put("vnp_OrderType", "other");
         params.put("vnp_Locale", vnPayConfig.getLocale());
         params.put("vnp_ReturnUrl", vnPayConfig.getBackendReturnUrl());
         params.put("vnp_IpAddr", VnPayUtils.getClientIp(httpRequest));
-        // Không set vnp_BankCode — để VNPay hiển thị đầy đủ lựa chọn (QR +
-        // danh sách ngân hàng/thẻ) cho người dùng tự chọn, giống trải nghiệm
-        // thật. Khi demo/test bằng thẻ NCB, tự chọn "Thẻ ATM nội địa" rồi
-        // chọn ngân hàng NCB trên giao diện VNPay.
-
-        LocalDateTime now = LocalDateTime.now();
         params.put("vnp_CreateDate", now.format(VNP_DATE_FMT));
-
-        // Hạn thanh toán trên VNPay = đúng thời gian CÒN LẠI tới payment_deadline
-        // của booking (BR-27: tổng 10 phút cho cả đặt + thanh toán, không tách 5+5).
-        // Nếu user mất 6 phút chọn dịch vụ trước khi bấm thanh toán, VNPay chỉ
-        // cho thêm 4 phút còn lại — không reset lại thành khoảng mới.
-        LocalDateTime expireDate = booking.getPaymentDeadline() != null
-                ? booking.getPaymentDeadline()
-                : now.plusMinutes(10);
-        // Tối thiểu 1 phút để tránh VNPay từ chối nếu deadline gần như đã hết
-        if (expireDate.isBefore(now.plusMinutes(1))) {
-            expireDate = now.plusMinutes(1);
-        }
         params.put("vnp_ExpireDate", expireDate.format(VNP_DATE_FMT));
 
         String hashData = VnPayUtils.buildHashData(params);
         String secureHash = VnPayUtils.hmacSHA512(vnPayConfig.getHashSecret(), hashData);
-
-        String paymentUrl = vnPayConfig.getPayUrl() + "?" + hashData
-                + "&vnp_SecureHash=" + secureHash;
-
-        log.info("[Payment] Tạo payment URL cho booking {} - txnRef={} - amount={}",
-                booking.getBookingCode(), txnRef, amountVnd);
+        String paymentUrl = vnPayConfig.getPayUrl() + "?" + hashData + "&vnp_SecureHash=" + secureHash;
 
         return PaymentUrlResponse.builder()
                 .paymentUrl(paymentUrl)
@@ -215,7 +239,9 @@ public class PaymentService {
         Booking booking = payment.getBooking();
 
         // Validate số tiền khớp (chống giả mạo IPN với amount khác)
-        long expectedAmount = booking.getTotalAmount().longValueExact() * 100;
+        // Dùng payment.getAmount() vì đây là số tiền thực sự được charge
+        // (với dịch vụ bổ sung = serviceAmount, với booking gốc = totalAmount)
+        long expectedAmount = payment.getAmount().longValue() * 100;
         if (vnpAmount == null || Long.parseLong(vnpAmount) != expectedAmount) {
             log.warn("[Payment IPN] Số tiền không khớp: expected={} got={}", expectedAmount, vnpAmount);
             response.put("RspCode", "04");
@@ -236,7 +262,7 @@ public class PaymentService {
                 booking.setStatus(BookingStatus.CONFIRMED);
                 bookingRepository.save(booking);
 
-                // Slot: PENDING -> OCCUPIED (đã thanh toán xong, chính thức giữ chỗ)
+                // Slot: PENDING -\u003e OCCUPIED (đã thanh toán xong, chính thức giữ chỗ)
                 List<BookingSlot> bookingSlots = bookingSlotRepository.findByBookingId(booking.getId());
                 for (BookingSlot bs : bookingSlots) {
                     FieldSlot slot = bs.getFieldSlot();
@@ -251,6 +277,8 @@ public class PaymentService {
                     bookingSlots
                 );
             }
+            // Nếu booking đã CONFIRMED/IN_PROGRESS: đây là thanh toán dịch vụ bổ sung
+            // → không đổi status, không gửi email xác nhận lại
 
             log.info("[Payment IPN] Thanh toán thành công booking {} - txnRef={}",
                     booking.getBookingCode(), txnRef);

@@ -157,6 +157,7 @@ public class OwnerDashboardService {
             String typeLabel = switch (field.getType().name()) {
                 case "FIVE_VS_FIVE"       -> "5v5";
                 case "SEVEN_VS_SEVEN"     -> "7v7";
+                case "NINE_VS_NINE"       -> "9v9";
                 case "ELEVEN_VS_ELEVEN"   -> "11v11";
                 default                   -> field.getType().name();
             };

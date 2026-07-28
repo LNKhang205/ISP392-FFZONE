@@ -34,7 +34,9 @@ export function CartProvider({ children }) {
   }
 
   const clear = async () => {
-    await clearCartApi(); setCart(c => c ? { ...c, items: [], total: 0 } : null)
+    await clearCartApi()
+    // Re-fetch để đảm bảo state đồng bộ với server
+    await fetchCart()
   }
 
   const itemCount = cart?.items?.reduce((sum, i) => sum + i.quantity, 0) ?? 0

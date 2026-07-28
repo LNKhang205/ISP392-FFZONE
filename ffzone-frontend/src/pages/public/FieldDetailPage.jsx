@@ -97,6 +97,8 @@ export default function FieldDetailPage() {
     })
   }
 
+  const maxDateStr = getLocalDateString(new Date(Date.now() + 6 * 24 * 60 * 60 * 1000))
+
   return (
     <div className={styles.page}>
       <div className="container">
@@ -169,37 +171,17 @@ export default function FieldDetailPage() {
                 <input
                   type="date"
                   min={todayStr}
+                  max={maxDateStr}
                   value={selectedDate}
                   onChange={e => setSelectedDate(e.target.value)}
                   className={styles.dateInput}
                 />
               </div>
 
-              {/* Bảng giá */}
-              <div className={styles.priceSection}>
-                <h4>Bảng giá ({isWeekendDay ? 'Cuối tuần' : 'Ngày thường'})</h4>
-                {activePricings.length === 0 ? (
-                  <p className={styles.noPrice}>Chưa có bảng giá cho ngày này. Vui lòng liên hệ để biết thêm.</p>
-                ) : (
-                  <div className={styles.priceList}>
-                    {activePricings.map(p => (
-                      <div key={p.id} className={styles.priceRow}>
-                        <span className={styles.priceTime}>
-                          {p.startTime?.substring(0,5)} – {p.endTime?.substring(0,5)}
-                        </span>
-                        <span className={styles.priceAmount}>
-                          {Number(p.price).toLocaleString('vi-VN')}₫/giờ
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
               <button
                 className={`btn btn-primary ${styles.bookBtn}`}
                 disabled={field.status !== 'ACTIVE'}
-                onClick={guard(() => navigate(`/booking?fieldId=${field.id}`))}
+                onClick={guard(() => navigate(`/booking?fieldId=${field.id}&date=${selectedDate}`))}
               >
                 {field.status === 'ACTIVE' ? '⚽ Đặt sân ngay' : 'Sân đang tạm dừng'}
               </button>

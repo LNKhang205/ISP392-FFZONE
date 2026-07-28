@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
@@ -27,6 +28,20 @@ public class PaymentController {
             @PathVariable UUID bookingId,
             HttpServletRequest request) {
         return ResponseEntity.ok(paymentService.createPaymentUrl(bookingId, request));
+    }
+
+    /**
+     * FE gọi sau khi addServicesAtVenue thành công.
+     * payAmount là số tiền DỊch VỤ MỚI cần trả (đã tính discount nếu có),
+     * KHÔNG bao gồm tiền sân đã thanh toán trước đó.
+     */
+    @PostMapping("/{bookingId}/create-addon-url")
+    public ResponseEntity<PaymentUrlResponse> createAddonPaymentUrl(
+            @PathVariable UUID bookingId,
+            @RequestBody Map<String, Object> body,
+            HttpServletRequest request) {
+        BigDecimal payAmount = new BigDecimal(body.get("payAmount").toString());
+        return ResponseEntity.ok(paymentService.createAddonPaymentUrl(bookingId, payAmount, request));
     }
 
     /**

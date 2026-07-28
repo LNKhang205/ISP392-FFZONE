@@ -381,3 +381,145 @@
   color: #16a34a;
   font-weight: 600;
 }
+
+/* ── Split layout for Check-In page ── */
+.checkinLayout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  margin-top: 20px;
+}
+
+.checkinLeft {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0; /* Cho phép co giãn mượt */
+}
+
+.checkinRight {
+  width: 420px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 24px;
+}
+
+.statusFilterTabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.statusFilterTab {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  color: #4b5563;
+  transition: all 0.15s;
+}
+
+.statusFilterTabActive {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #3b82f6;
+}
+
+.todayList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 600px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+/* Scrollbar styling for todayList */
+.todayList::-webkit-scrollbar {
+  width: 6px;
+}
+.todayList::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 99px;
+}
+.todayList::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 99px;
+}
+
+.todayRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  background: #fff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.todayRow:hover {
+  border-color: #3b82f6;
+  background: #f0f7ff;
+  transform: translateY(-1px);
+}
+
+.todayRowActive {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08);
+}
+
+.todayRowLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.todayCode {
+  font-family: monospace;
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 0.95rem;
+}
+
+.todayMeta {
+  font-size: 0.8rem;
+  color: #64748b;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+}
+
+.placeholderCard {
+  background: #fff;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 10px;
+  padding: 48px 24px;
+  text-align: center;
+  color: #94a3b8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+}
+
+.placeholderIcon {
+  font-size: 2.8rem;
+  margin-bottom: 12px;
+}
+
+.placeholderCard p {
+  margin: 4px 0 0;
+  font-size: 0.875rem;
+}
+

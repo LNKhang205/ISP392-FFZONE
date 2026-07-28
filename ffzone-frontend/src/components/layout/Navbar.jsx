@@ -28,9 +28,6 @@ export default function Navbar() {
           {isLoggedIn ? (
             <>
               {isCustomer(user?.role) && (
-                <Link to="/my-bookings" className={styles.link}>Lịch đặt</Link>
-              )}
-              {isCustomer(user?.role) && (
                 <Link to="/cart" className={styles.cartIcon}>
                   🛒
                   {itemCount > 0 && (

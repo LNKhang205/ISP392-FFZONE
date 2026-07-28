@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route, NavLink, useNavigate } from 'react-router-dom'
+import { Routes, Route, NavLink, useNavigate, Navigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../services/api'
 import { getPendingRefunds, getAllRefunds, completeRefund, rejectRefund } from '../../api/refundApi'
@@ -9,9 +9,7 @@ import { getLocalDateString } from '../../utils/date'
 /* ── Sidebar ── */
 function Sidebar({ onLogout }) {
   const navItems = [
-    { to: '/staff',          label: 'Lịch hôm nay',   end: true },
     { to: '/staff/bookings', label: 'Quản lý booking' },
-    { to: '/staff/services', label: 'Dịch vụ tại sân' },
     { to: '/staff/checkin',  label: 'Check-in'         },
     { to: '/staff/refunds',  label: 'Hoàn tiền'        },
   ]
@@ -355,6 +353,36 @@ function CheckIn() {
   const [busy, setBusy]             = useState(false)
   const [searchErr, setSearchErr]   = useState('')
   const [actionMsg, setActionMsg]   = useState(null)
+  const [statusFilter, setStatusFilter] = useState('ALL')
+
+  const [bookingServices, setBookingServices] = useState([])
+  const [servicesLoading, setServicesLoading] = useState(false)
+
+  const filteredToday = todayBookings.filter(b => {
+    if (statusFilter === 'ALL') return true
+    if (statusFilter === 'CONFIRMED') return b.status === 'CONFIRMED'
+    if (statusFilter === 'IN_PROGRESS') return b.status === 'IN_PROGRESS'
+    if (statusFilter === 'COMPLETED') return b.status === 'COMPLETED' || b.status === 'CANCELLED'
+    return true
+  })
+
+  // Load dịch vụ của booking khi chọn
+  useEffect(() => {
+    if (!selectedBooking) {
+      setBookingServices([])
+      return
+    }
+    if (selectedBooking.services && selectedBooking.services.length > 0) {
+      setBookingServices(selectedBooking.services)
+      setServicesLoading(false)
+    } else {
+      setServicesLoading(true)
+      api.get(`/bookings/${selectedBooking.id}/services`)
+        .then(r => setBookingServices(r.data))
+        .catch(() => setBookingServices([]))
+        .finally(() => setServicesLoading(false))
+    }
+  }, [selectedBooking])
 
   // Load lịch hôm nay khi vào trang — vấn đề 3
   useEffect(() => {
@@ -440,6 +468,28 @@ function CheckIn() {
               ))}
             </div>
           </div>
+
+          {/* Dịch vụ đã đặt */}
+          <div className={styles.infoRow} style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+            <span style={{ fontWeight: 600, color: '#475569', marginBottom: 6 }}>Dịch vụ kèm theo</span>
+            {servicesLoading ? (
+              <span className={styles.cardHint} style={{ fontStyle: 'italic', margin: 0 }}>Đang tải danh sách dịch vụ...</span>
+            ) : bookingServices.length === 0 ? (
+              <span className={styles.cardHint} style={{ fontStyle: 'italic', margin: 0, color: '#94a3b8' }}>Không có dịch vụ đi kèm</span>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: '#f8fafc', padding: '10px 14px', borderRadius: 8, border: '1px solid #e5e7eb', marginTop: 4 }}>
+                {bookingServices.map(item => (
+                  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                    <span>
+                      🥤 <strong>{item.serviceName}</strong> <span style={{ color: '#64748b' }}>x{item.quantity}</span>
+                    </span>
+                    <span style={{ fontWeight: 600 }}>{Number(item.totalPrice).toLocaleString('vi-VN')}₫</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className={styles.infoRow}>
             <span>Tổng tiền</span>
             <strong>{Number(booking.totalAmount).toLocaleString('vi-VN')}₫</strong>
@@ -485,62 +535,99 @@ function CheckIn() {
     <div className={styles.page}>
       <h1>Check-in / Check-out</h1>
 
-      {/* ── Tìm theo mã ── */}
-      <div className={styles.card}>
-        <p className={styles.cardHint}>Tìm nhanh theo mã đặt sân hoặc scan QR:</p>
-        <div className={styles.formRow}>
-          <input
-            placeholder="Mã đặt sân (VD: FFZ-20260701-1234)..."
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSearch()}
-            className={styles.input}
-          />
-          <button onClick={handleSearch} disabled={searching} className={styles.btnPrimary}>
-            {searching ? '...' : '🔍 Tìm'}
-          </button>
-        </div>
-        {searchErr && <p className={styles.errText}>❌ {searchErr}</p>}
-      </div>
-
-      {/* Chi tiết booking tìm được qua mã */}
-      {selectedBooking && <BookingPanel booking={selectedBooking} />}
-
-      {/* ── Lịch sân hôm nay — vấn đề 2 & 3 ── */}
-      <div className={styles.card}>
-        <h2 className={styles.sectionTitle}>
-          📅 Lịch sân hôm nay — {new Date().toLocaleDateString('vi-VN')}
-        </h2>
-        {loadingToday ? (
-          <p className={styles.cardHint}>Đang tải...</p>
-        ) : todayBookings.length === 0 ? (
-          <p className={styles.cardHint}>Không có đơn nào hôm nay.</p>
-        ) : (
-          <div className={styles.todayList}>
-            {todayBookings.map(b => {
-              const cfg = BOOKING_STATUS_LABEL[b.status] || { text: b.status, bg: '#f3f4f6', color: '#374151' }
-              return (
-                <div
-                  key={b.id}
-                  className={`${styles.todayRow} ${selectedBooking?.id === b.id ? styles.todayRowActive : ''}`}
-                  onClick={() => { setSelectedBooking(b); setActionMsg(null); setSearchErr('') }}
-                >
-                  <div className={styles.todayRowLeft}>
-                    <span className={styles.todayCode}>{b.bookingCode}</span>
-                    <span className={styles.todayMeta}>
-                      ⚽ {b.fieldName} &nbsp;·&nbsp;
-                      👤 {b.accountName} &nbsp;·&nbsp;
-                      🕐 {b.slots?.map(fmtSlot).join(', ')}
-                    </span>
-                  </div>
-                  <span className={styles.statusBadge} style={{ background: cfg.bg, color: cfg.color }}>
-                    {cfg.text}
-                  </span>
-                </div>
-              )
-            })}
+      <div className={styles.checkinLayout}>
+        {/* Left Side: Booking List & Filters */}
+        <div className={styles.checkinLeft}>
+          {/* ── Tìm kiếm nhanh ── */}
+          <div className={styles.card} style={{ marginBottom: 0 }}>
+            <p className={styles.cardHint}>Tìm nhanh theo mã đặt sân hoặc scan QR:</p>
+            <div className={styles.formRow}>
+              <input
+                placeholder="Mã đặt sân (VD: FFZ-20260701-1234)..."
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                className={styles.input}
+              />
+              <button onClick={handleSearch} disabled={searching} className={styles.btnPrimary}>
+                {searching ? '...' : '🔍 Tìm'}
+              </button>
+            </div>
+            {searchErr && <p className={styles.errText}>❌ {searchErr}</p>}
           </div>
-        )}
+
+          {/* ── Danh sách hôm nay ── */}
+          <div className={styles.card} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+              <h2 className={styles.sectionTitle} style={{ margin: 0 }}>
+                📅 Danh sách đặt hôm nay ({new Date().toLocaleDateString('vi-VN')})
+              </h2>
+            </div>
+
+            {/* Bộ lọc trạng thái */}
+            <div className={styles.statusFilterTabs}>
+              {[
+                { key: 'ALL', label: 'Tất cả' },
+                { key: 'CONFIRMED', label: 'Chờ Check-in' },
+                { key: 'IN_PROGRESS', label: 'Đang đá' },
+                { key: 'COMPLETED', label: 'Đã xong / Hủy' }
+              ].map(tab => (
+                <button
+                  key={tab.key}
+                  className={`${styles.statusFilterTab} ${statusFilter === tab.key ? styles.statusFilterTabActive : ''}`}
+                  onClick={() => setStatusFilter(tab.key)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {loadingToday ? (
+              <p className={styles.cardHint}>Đang tải...</p>
+            ) : filteredToday.length === 0 ? (
+              <p className={styles.cardHint} style={{ fontStyle: 'italic', margin: '20px 0' }}>Không có đơn đặt sân nào phù hợp.</p>
+            ) : (
+              <div className={styles.todayList}>
+                {filteredToday.map(b => {
+                  const cfg = BOOKING_STATUS_LABEL[b.status] || { text: b.status, bg: '#f3f4f6', color: '#374151' }
+                  const active = selectedBooking?.id === b.id
+                  return (
+                    <div
+                      key={b.id}
+                      className={`${styles.todayRow} ${active ? styles.todayRowActive : ''}`}
+                      onClick={() => { setSelectedBooking(b); setActionMsg(null); setSearchErr('') }}
+                    >
+                      <div className={styles.todayRowLeft}>
+                        <span className={styles.todayCode}>{b.bookingCode}</span>
+                        <div className={styles.todayMeta}>
+                          <span>⚽ {b.fieldName}</span>
+                          <span>👤 {b.accountName}</span>
+                          <span>🕐 {b.slots?.map(fmtSlot).join(', ')}</span>
+                        </div>
+                      </div>
+                      <span className={styles.statusBadge} style={{ background: cfg.bg, color: cfg.color }}>
+                        {cfg.text}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Side: Booking Panel Detail / Placeholder */}
+        <div className={styles.checkinRight}>
+          {selectedBooking ? (
+            <BookingPanel booking={selectedBooking} />
+          ) : (
+            <div className={styles.placeholderCard}>
+              <span className={styles.placeholderIcon}>📋</span>
+              <h3>Chi tiết đặt sân</h3>
+              <p>Chọn một đơn từ danh sách bên trái hoặc nhập mã tìm kiếm để hiển thị chi tiết check-in / check-out.</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -703,7 +790,7 @@ export default function StaffDashboard() {
         </div>
         <div className={styles.content}>
           <Routes>
-            <Route index        element={<TodaySchedule />} />
+            <Route index        element={<Navigate to="bookings" replace />} />
             <Route path="bookings" element={<BookingManagement />} />
             <Route path="services" element={<ServiceManagement />} />
             <Route path="checkin"  element={<CheckIn />} />
